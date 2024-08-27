@@ -1,0 +1,20 @@
+{
+  "validation": {
+    "username_required": "Username is required",
+    "username_length": "Username must be at least 3 characters long",
+    "username_format": "Username can only contain letters, numbers, and underscores",
+    "email_invalid": "Please provide a valid email address",
+    "password_length": "Password must be 8-16 characters long",
+    "password_uppercase": "Password must contain at least one uppercase letter",
+    "password_lowercase": "Password must contain at least one lowercase letter",
+    "password_digit": "Password must contain at least one digit",
+    "password_special": "Password must contain at least one special character"
+  },
+  "auth": {
+    "register_success": "Registered Successfully",
+    "login_success": "Login Successfully",
+    "user_exists": "User already exists",
+    "user_not_found": "Username or Password Incorrect",
+    "password_incorrect": "Username or Password Incorrect"
+  }
+}

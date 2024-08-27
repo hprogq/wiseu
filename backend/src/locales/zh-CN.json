@@ -1,0 +1,20 @@
+{
+  "validation": {
+    "username_required": "用户名是必填项",
+    "username_length": "用户名长度至少为3个字符",
+    "username_format": "用户名只能包含字母、数字和下划线",
+    "email_invalid": "请输入有效的电子邮件地址",
+    "password_length": "密码长度必须为8-16个字符",
+    "password_uppercase": "密码必须包含至少一个大写字母",
+    "password_lowercase": "密码必须包含至少一个小写字母",
+    "password_digit": "密码必须包含至少一个数字",
+    "password_special": "密码必须包含至少一个特殊字符"
+  },
+  "auth": {
+    "register_success": "注册成功",
+    "login_success": "登录成功",
+    "user_exists": "用户已存在",
+    "user_not_found": "用户名或密码不正确",
+    "password_incorrect": "用户名或密码不正确"
+  }
+}
