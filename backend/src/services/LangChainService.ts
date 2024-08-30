@@ -3,18 +3,17 @@ import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages
 import { BaseMessage } from "@langchain/core/messages";
 import config from "../config/config";
 import { MessageDocument } from "../models/Chat";
-import { AIMessageChunk } from "@langchain/core/messages";
 
 export class LangChainService {
     private model: ChatOpenAI;
 
     constructor() {
         this.model = new ChatOpenAI({
+            apiKey: config.openAIApiKey,
             model: "glm-4",
             temperature: 0.8,
             streaming: true,
             configuration: {
-                apiKey: config.openAIApiKey,
                 baseURL: "https://open.bigmodel.cn/api/paas/v4",
             }
         });

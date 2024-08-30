@@ -5,6 +5,7 @@ import i18n from 'i18n';
 import { detectLanguage } from "./config/i18n";
 import authRoutes from './routes/authRoutes';
 import chatRoutes from './routes/chatRoutes';
+import identityRoutes from './routes/identityRoutes';
 
 const app = express();
 
@@ -20,6 +21,8 @@ app.use(morgan('dev'));
 // Routes
 app.use('/auth', authRoutes);
 app.use('/chat', chatRoutes);
+app.use('/identity', identityRoutes);
+
 app.get('/', (req, res) => {
     res.send({ success: true, message: 'WiseU OK', data: null });
 });

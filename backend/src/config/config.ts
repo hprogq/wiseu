@@ -6,5 +6,7 @@ export default {
     openAIApiKey: process.env.OPENAI_API_KEY || 'your_openai_api_key',
     mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/wiseu',
     jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret_key',
+    encryptSecret: process.env.ENCRYPT_SECRET || 'your_encrypt_secret_key',
     port: process.env.PORT || 5000,
+    debug: process.env.DEBUG || false,
 };
