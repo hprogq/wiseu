@@ -1,35 +1,26 @@
-import { IdentityProvider, LoginParameter } from './IdentityProvider';
-import axios, { AxiosResponse } from "axios";
+import {IdentityProvider, Parameter} from './IdentityProvider';
+import axios, {AxiosResponse} from "axios";
 import setCookie from 'set-cookie-parser';
 import * as cheerio from 'cheerio';
 import { strEnc } from '../utils/des';
-import Identity from '../models/Identity';
+import xml2js from 'xml2js';
 
-class DluflUndergradProvider implements IdentityProvider {
+class DluflUndergradProvider extends IdentityProvider {
     private identityType = "dlufl_undergrad";
-    private casHost = 'https://cas.dlufl.edu.cn';
-    private dcpValidateUrl = 'https://i.dlufl.edu.cn/dcp/';
+    private casBase = 'https://cas.dlufl.edu.cn/cas';
+    private dcpServiceUrl = 'https://i.dlufl.edu.cn/dcp/';
     private requestHeaders = {
         'User-Agent': `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36`,
         'Content-Type': 'application/x-www-form-urlencoded',
     };
 
-    async getToken(loginInfo: any): Promise<{ success: boolean; token?: any; message?: string }> {
-        const loginParameters = this.getLoginParameters();
-
-        // 验证 loginInfo 是否符合 loginParameters
-        for (const param of loginParameters) {
-            if (param.required && !loginInfo[param.fieldName]) {
-                return { success: false, message: `Missing required field: ${param.displayName}` };
-            }
-        }
-
+    async getTokenByParams(params: any): Promise<{ success: boolean; data?: any; message?: string }> {
         try {
-            const { username, password } = loginInfo;
+            const { username, password } = params;
 
             // 发送初始GET请求
             const initResponse: AxiosResponse = await axios.get(
-                `${this.casHost}/cas/login?service=${this.dcpValidateUrl}&renew=true&_=${new Date().getTime()}`,
+                `${this.casBase}/login?service=${this.dcpServiceUrl}&renew=true&_=${new Date().getTime()}`,
                 { headers: this.requestHeaders }
             );
 
@@ -39,13 +30,13 @@ class DluflUndergradProvider implements IdentityProvider {
                 return { success: false, message: 'Remote server error.' };
             }
 
-            const initCookies = setCookie.parse(initSetCookieHeader);
-            const validCookieInit = initCookies.find(cookie => cookie.name.startsWith('JSESSIONIDCAS'));
+            const initCookie = setCookie.parse(initSetCookieHeader);
+            const validCookieInit = initCookie.find(cookie => cookie.name.startsWith('JSESSIONIDCAS'));
             if (!validCookieInit) {
                 return { success: false, message: 'Remote server error.' };
             }
 
-            const cookieString = initCookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+            const cookieString = initCookie.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
             const $init = cheerio.load(initResponse.data);
             const ticket = $init("#lt").val() as string;
             const execution = $init('input[name="execution"]').val() as string;
@@ -57,7 +48,7 @@ class DluflUndergradProvider implements IdentityProvider {
 
             // 发送 POST 请求以提交登录表单
             const loginResponse: AxiosResponse = await axios.post(
-                `${this.casHost}/cas/login?service=${this.dcpValidateUrl}`,
+                `${this.casBase}/login?service=${this.dcpServiceUrl}`,
                 new URLSearchParams({
                     rsa,
                     ul: username.length.toString(),
@@ -83,13 +74,13 @@ class DluflUndergradProvider implements IdentityProvider {
             if (!loginSetCookieHeader) {
                 return { success: false, message: 'Remote server error.' };
             }
-            const loginCookies = setCookie.parse(loginSetCookieHeader);
-            const loginCookieString = loginCookies
+            const loginCookie = setCookie.parse(loginSetCookieHeader);
+            const loginCookieString = loginCookie
                 .filter(cookie => cookie.name !== 'Language')
                 .map(cookie => `${cookie.name}=${cookie.value}`)
                 .join('; ');
 
-            const validCookieLogin = loginCookies.find(cookie => cookie.name.startsWith('CASTGC'));
+            const validCookieLogin = loginCookie.find(cookie => cookie.name.startsWith('CASTGC'));
             if (!validCookieLogin) {
                 const $login = cheerio.load(loginResponse.data);
                 const loginErrorMsg = $login('#errormsghide').text();
@@ -100,14 +91,13 @@ class DluflUndergradProvider implements IdentityProvider {
                 }
             }
 
-            const resultCookie = cookieString + '; ' + loginCookieString;
-            return { success: true, token: { cookies: resultCookie } };
+            return { success: true, data: { cookie: loginCookieString } };
         } catch (error: any) {
             return { success: false, message: error.message };
         }
     }
 
-    async updateToken(identityId: string): Promise<{ success: boolean; token?: any; message?: string }> {
+    /* async updateToken(identityId: string): Promise<{ success: boolean; token?: string; message?: string }> {
         try {
             const identity = await Identity.findById(identityId);
             if (!identity || identity.type !== this.identityType) {
@@ -115,12 +105,15 @@ class DluflUndergradProvider implements IdentityProvider {
             }
 
             const loginInfo = identity.loginInfo; // 自动解密
-            const tokenResponse = await this.getToken(loginInfo);
+            const tokenResponse = await this.getTokenByParams(loginInfo);
             if (!tokenResponse.success) {
                 return { success: false, message: tokenResponse.message };
             }
 
-            identity.token = tokenResponse.token; // 明文存储，钩子自动加密
+            if (!tokenResponse.token) {
+                return { success: false, message: 'Token missing' };
+            }
+            identity.token = tokenResponse.token;
             identity.lastUpdated = new Date();
             await identity.save();
 
@@ -128,136 +121,170 @@ class DluflUndergradProvider implements IdentityProvider {
         } catch (error: any) {
             return { success: false, message: error.message };
         }
+    } */
+
+
+    async validateToken(token: any): Promise<{ success: boolean; message?: string }> {
+        const authResponse = await this.authorizeServiceByToken(token, this.dcpServiceUrl);
+        if (!authResponse.success || !authResponse.data) {
+            return { success: false, message: authResponse.message };
+        }
+        return { success: true };
     }
 
-    async authorize(identityId: string, serviceUrl: string, cookieList: string[]): Promise<{ success: boolean; cookie?: string; message?: string }> {
+    async authorizeServiceByToken(token: any, service: any): Promise<{ success: boolean; data?: any; message?: string }> {
         try {
-            let attempts = 0;
-            let tokenValid = false;
-            let token = null;
+            const response: AxiosResponse = await axios.get(`${this.casBase}/login?service=${service.url}`, {
+                maxRedirects: 0,
+                validateStatus: (status) => status >= 200 && status < 400,
+                headers: { ...this.requestHeaders, 'Cookie': token.cookie },
+            });
 
-            while (attempts < 3 && !tokenValid) {
-                const identity = await Identity.findById(identityId);
-                if (!identity || identity.type !== this.identityType) {
-                    return { success: false, message: 'Identity not found or type mismatch' };
-                }
-
-                token = identity.token;
-                const response: AxiosResponse = await axios.get(`${this.casHost}/cas/login?service=${serviceUrl}`, {
+            const location = response.headers['location'];
+            if (!location) {
+                return { success: false, message: 'Authorization failed' };
+            }
+            /* if (location && location.includes('ticket=')) {
+                const ticketResponse: AxiosResponse = await axios.get(location, {
                     maxRedirects: 0,
                     validateStatus: (status) => status >= 200 && status < 400,
-                    headers: { ...this.requestHeaders, 'Cookie': token.cookies },
+                    headers: { ...this.requestHeaders, 'Cookie': token },
                 });
 
-                const location = response.headers['location'];
-                if (location && location.includes('ticket=')) {
-                    // 提取ticket后发送请求
-                    const ticketResponse: AxiosResponse = await axios.get(location, {
-                        maxRedirects: 0,
-                        validateStatus: (status) => status >= 200 && status < 400,
-                        headers: { ...this.requestHeaders, 'Cookie': token.cookies },
-                    });
-
-                    // 提取set-cookie头
-                    const setCookieHeader = ticketResponse.headers['set-cookie'];
-                    if (!setCookieHeader) {
-                        return { success: false, message: 'Set-Cookie header not found' };
-                    }
-
-                    // 解析set-cookie头
-                    const cookies = setCookie.parse(setCookieHeader);
-                    const cookieMap = new Map(cookies.map(cookie => [cookie.name, cookie.value]));
-
-                    // 检查cookieList中的所有cookie是否存在
-                    const missingCookies = cookieList.filter(cookieName => !cookieMap.has(cookieName));
-                    if (missingCookies.length === 0) {
-                        // 构建完整的cookie字符串
-                        const cookieString = cookieList.map(cookieName => `${cookieName}=${cookieMap.get(cookieName)}`).join('; ');
-                        return { success: true, cookie: cookieString };
-                    } else {
-                        return { success: false, message: `Missing required cookies: ${missingCookies.join(', ')}` };
-                    }
+                const setCookieHeader = ticketResponse.headers['set-cookie'];
+                if (!setCookieHeader) {
+                    return { success: false, message: 'Set-Cookie header not found' };
                 }
 
-                // 更新token并重试
-                const tokenResponse = await this.updateToken(identityId);
-                if (tokenResponse.success) {
-                    tokenValid = true;
-                    token = tokenResponse.token;
-                } else {
-                    attempts++;
+                const cookies = setCookie.parse(setCookieHeader);
+                const cookieMap = new Map(cookies.map(cookie => [cookie.name, cookie.value]));
+
+                const missingCookies = cookieList.filter(cookieName => !cookieMap.has(cookieName));
+                if (missingCookies.length === 0) {
+                    const cookieString = cookieList.map(cookieName => `${cookieName}=${cookieMap.get(cookieName)}`).join('; ');
+                    return { success: true, cookie: cookieString };
                 }
+            } */
+            const regex = /[?&]ticket=([^&#]*)/;
+            const results = regex.exec(location.toString());
+            if (!results || !results[1]) {
+                return { success: false, message: 'Authorization failed' };
             }
 
-            return { success: false, message: 'Authorization failed after multiple attempts' };
+            const ticket = results[1];
+            return { success: true, data: { ticket } };
         } catch (error: any) {
             return { success: false, message: error.message };
         }
     }
 
-    async getUserInfo(identityId: string): Promise<{ success: boolean; message?: string; data?: any }> {
+    async getInfoByToken(token: any): Promise<{ success: boolean; data?: any; extra?: any; message?: string; }> {
         try {
-            // 首先调用授权方法获取ticket
-            const authResponse = await this.authorize(identityId, this.dcpValidateUrl, ["dcp114"]);
+            const authResponse = await this.authorizeServiceByToken(token, { url: this.dcpServiceUrl });
+            if (!authResponse.success || !authResponse.data) {
+                return { success: false, message: authResponse.message };
+            }
+
+            const ticket = authResponse.data.ticket;
+            const validateResponse: AxiosResponse = await axios.post(`${this.casBase}/proxyValidate`, new URLSearchParams({
+                service: this.dcpServiceUrl,
+                ticket,
+            }).toString(), {
+                headers: this.requestHeaders,
+            });
+
+            const parser = new xml2js.Parser({
+                explicitArray: false // 禁止将单个节点解析为数组
+            });
+
+            interface AttributeObject {
+                [key: string]: string; // 定义一个支持任意字符串键的对象接口
+            }
+
+            let parseResult: any = null;
+            // 初始化存储sso:attributes的对象，使用灵活的类型定义
+            const userInfo: AttributeObject = {};
+
+            // 解析 XML 数据为 JavaScript 对象
+            parser.parseString(validateResponse.data, (err, result) => {
+                if (err || !result['sso:serviceResponse']['sso:authenticationSuccess']) {
+                    return;
+                } else {
+                    parseResult = result;
+                }
+            });
+
+            if (!parseResult) {
+                return { success: false, message: 'Failed to parse info.' };
+            }
+
+            // 类型断言明确 result 类型
+            const ssoInfo = (parseResult['sso:serviceResponse']['sso:authenticationSuccess']['sso:attributes']['sso:attribute'] as any[]) || [];
+
+            ssoInfo.forEach(attribute => {
+                const name = attribute['$'].name;
+                userInfo[name] = attribute['$'].value || '';
+            });
+
+            let extraInfo: any = [];
+            if (userInfo['user_id'] && userInfo['unit_name'] && userInfo['id_number'] && userInfo['user_name']) {
+                extraInfo['alias'] = `${userInfo['user_name']} / ${userInfo['unit_name']} / ${userInfo['id_number']}`;
+                extraInfo['uuid'] = userInfo['user_id'] || '';
+            }
+
+            /* // 使用合并后的 authorize 方法获取 ticket
+            const authResponse = await this.authorize(identityOrToken, this.dcpValidateUrl, ["dcp114"]);
             if (!authResponse.success) {
                 return { success: false, message: authResponse.message };
             }
 
-            // 使用 ticket 获取用户类型
-            try {
-                const userTypeResponse: AxiosResponse = await axios.post(`${this.dcpValidateUrl}/sys/uacm/profile/getUserType`, {}, {
-                    headers: {
-                        "Content-Type": "application/json;charset=UTF-8",
-                        "Cookie": authResponse.cookie
-                    }
-                });
-
-                // 验证响应是否为预期格式
-                if (!Array.isArray(userTypeResponse.data)) {
-                    return { success: false, message: 'Unexpected response format for user type.' };
+            const userTypeResponse: AxiosResponse = await axios.post(`${this.dcpValidateUrl}/sys/uacm/profile/getUserType`, {}, {
+                headers: {
+                    "Content-Type": "application/json;charset=UTF-8",
+                    "Cookie": authResponse.cookie
                 }
+            });
 
-                const validUserTypes = userTypeResponse.data.filter((item: any) => typeof item === 'object' && item !== null);
-                if (validUserTypes.length === 0) {
-                    return { success: false, message: 'No valid user type found.' };
-                }
-
-                const userType = validUserTypes[0];
-                if (!userType.ID_NUMBER) {
-                    return { success: false, message: 'User type does not contain ID_NUMBER.' };
-                }
-
-                // 使用用户类型信息获取用户详情
-                const encryptedId = strEnc(userType.ID_NUMBER, 'tp', 'des', 'param');
-                const userInfoResponse: AxiosResponse = await axios.post(`${this.dcpValidateUrl}/sys/uacm/profile/getUserById`, {
-                    BE_OPT_ID: encryptedId
-                }, {
-                    headers: {
-                        "Content-Type": "application/json;charset=UTF-8",
-                        "Cookie": authResponse.cookie
-                    }
-                });
-
-                // 检查返回的数据是否包含用户信息
-                if (!userInfoResponse.data || !userInfoResponse.data.USER_NAME) {
-                    return { success: false, message: 'Failed to retrieve user information.' };
-                }
-
-                // 返回成功信息和用户数据
-                return { success: true, message: 'User info fetched successfully', data: userInfoResponse.data };
-
-            } catch (userTypeError: any) {
-                console.error("Error fetching user type:", userTypeError.message);
-                return { success: false, message: 'Failed to fetch user type: ' + userTypeError.message };
+            if (!Array.isArray(userTypeResponse.data)) {
+                return { success: false, message: 'Unexpected response format for user type.' };
             }
 
-        } catch (authError: any) {
-            console.error("Authorization error:", authError.message);
-            return { success: false, message: 'Authorization failed: ' + authError.message };
+            const validUserTypes = userTypeResponse.data.filter((item: any) => typeof item === 'object' && item !== null);
+            if (validUserTypes.length === 0) {
+                return { success: false, message: 'No valid user type found.' };
+            }
+
+            const userType = validUserTypes[0];
+            if (!userType.ID_NUMBER) {
+                return { success: false, message: 'User type does not contain ID_NUMBER.' };
+            }
+
+            const encryptedId = strEnc(userType.ID_NUMBER, 'tp', 'des', 'param');
+            const userInfoResponse: AxiosResponse = await axios.post(`${this.dcpValidateUrl}/sys/uacm/profile/getUserById`, {
+                BE_OPT_ID: encryptedId
+            }, {
+                headers: {
+                    "Content-Type": "application/json;charset=UTF-8",
+                    "Cookie": authResponse.cookie
+                }
+            });
+
+            // 检查必要字段是否存在
+            const userInfo = userInfoResponse.data;
+            if (!userInfo || !userInfo.ID_NUMBER || !userInfo.RESOURCE_ID || !userInfo.UNIT_NAME || !userInfo.USER_NAME) {
+                return { success: false, message: 'Failed to retrieve required user information.' };
+            }
+
+            const displayInfo : string = `${userInfo.USER_NAME} / ${userInfo.UNIT_NAME} / ${userInfo.ID_NUMBER}`;
+
+            return { success: true, message: 'User info fetched successfully', displayInfo: displayInfo, uniqueId: userInfo.RESOURCE_ID }; */
+            return { success: true, message: 'Success', data: userInfo, extra: extraInfo };
+        } catch (error: any) {
+            return { success: false, message: error.message };
         }
     }
 
-    getLoginParameters(): LoginParameter[] {
+    getParams(): Parameter[] {
         return [
             {
                 fieldName: 'username',

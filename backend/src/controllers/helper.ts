@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import config from '../config/config';
-import {createResponse} from "../utils/responseHelper";
+import { createResponse } from "../utils/responseHelper";
+import User from '../models/User';
+import {translate} from "../utils/translate"; // 引入User模型
 
 const restful = (
     req: Request,
@@ -19,18 +19,20 @@ const restful = (
     }
 
     if (authenticate) {
-        const authHeader = req.headers.authorization;
+        if (req.session.user) {
+            const userId = req.session.user?.id;
 
-        if (authHeader) {
-            const token = authHeader.split(' ')[1];
-
-            jwt.verify(token, config.jwtSecret, (err: any, user: any) => {
-                if (err) {
-                    return res.status(403).json(createResponse(false, 'Invalid Token'));
+            // 检查用户在数据库中是否存在且有效
+            User.findById(userId).then(user => {
+                if (user && user.active) {
+                    return handlers[method](req, res);
+                } else {
+                    req.session.destroy(function() {
+                        return res.status(401).json(createResponse(false, 'Unauthorized'));
+                    });
                 }
-
-                req.user = user;
-                return handlers[method](req, res);
+            }).catch(() => {
+                return res.status(500).json(createResponse(false, 'Internal Server Error'));
             });
         } else {
             return res.status(401).json(createResponse(false, 'Unauthorized'));

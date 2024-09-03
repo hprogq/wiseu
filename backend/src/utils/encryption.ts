@@ -5,7 +5,7 @@ function getValidKey(key: string): Buffer {
     return crypto.createHash('sha256').update(key).digest();
 }
 
-const validKey = getValidKey(config.encryptSecret);
+const validKey = getValidKey(config.encryptKey);
 
 // 加密函数
 export function encrypt(data: string, secretKey: Buffer = validKey): string {

@@ -6,6 +6,7 @@ export interface IUser extends Document {
     password: string;
     roles: string[];
     identities: Types.ObjectId[]; // 一个用户可以绑定多个身份
+    active: boolean;
     createdAt: Date;
 }
 
@@ -15,6 +16,7 @@ const UserSchema: Schema = new Schema({
     password: { type: String, required: true },
     roles: { type: [String], default: ['user'] },
     identities: [{ type: Schema.Types.ObjectId, ref: 'Identity' }],
+    active: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
 });
 

@@ -1,3 +1,4 @@
+import { Request } from "express";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 import { BaseMessage } from "@langchain/core/messages";
@@ -7,19 +8,20 @@ import { MessageDocument } from "../models/Chat";
 export class LangChainService {
     private model: ChatOpenAI;
 
-    constructor() {
+    constructor(req: Request) {
         this.model = new ChatOpenAI({
             apiKey: config.openAIApiKey,
-            model: "glm-4",
+            model: "glm-4-plus",
             temperature: 0.8,
             streaming: true,
+            user: 'wiseu_' + req.session.user?.id,
             configuration: {
                 baseURL: "https://open.bigmodel.cn/api/paas/v4",
-            }
+            },
         });
     }
 
-    async chat(question: string, previousMessages: MessageDocument[], onTokenReceived: (token: string) => void): Promise<string> {
+    async chat(question: string, previousMessages: MessageDocument[], onTokenReceived: (token: string) => void, signal: AbortSignal): Promise<string> {
         const systemMessage = new SystemMessage({ content: "你是WiseU，一个专注于大学生的生活智能助理。接下来用户将与你进行对话。" });
 
         const promptMessages: BaseMessage[] = [
@@ -34,7 +36,8 @@ export class LangChainService {
 
         let fullResponse = "";
 
-        const stream = await this.model.stream(promptMessages);
+        // Make sure the stream method supports aborting with the signal
+        const stream = await this.model.stream(promptMessages, { signal });
 
         for await (const chunk of stream) {
             const token = chunk.content;

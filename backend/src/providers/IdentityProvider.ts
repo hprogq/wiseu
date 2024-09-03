@@ -1,4 +1,4 @@
-export interface LoginParameter {
+export interface Parameter {
     fieldName: string;
     fieldType: string; // 如 'string', 'password', 'email' 等
     displayName: string; // 显示在前端的名称
@@ -6,10 +6,16 @@ export interface LoginParameter {
     description?: string; // 可选的描述信息
 }
 
-export interface IdentityProvider {
-    getToken(loginInfo: any): Promise<{ success: boolean; token?: any; message?: string }>;
-    updateToken(identityId: string): Promise<{ success: boolean; token?: any; message?: string }>;
-    authorize(identityId: string, serviceUrl: string, cookieList: string[]): Promise<{ success: boolean; cookie?: string; message?: string }>;
-    getUserInfo(identityId: string): Promise<{ success: boolean; data?: any; message?: string }>;
-    getLoginParameters(): LoginParameter[];
+export abstract class IdentityProvider {
+    // 抽象方法，必须由子类实现
+    abstract getTokenByParams(params: any): Promise<{ success: boolean; data?: any; message?: string }>;
+    abstract validateToken(token: any): Promise<{ success: boolean; message?: string }>;
+    abstract getInfoByToken(token: any): Promise<{ success: boolean; data?: any; extra?: any; message?: string }>;
+    abstract authorizeServiceByToken(token: any, service: any): Promise<{ success: boolean; data?: any; message?: string }>;
+    abstract getParams(): Parameter[];
+
+    // 共有的方法实现
+    example(): void {
+        console.log("This is the shared method implementation");
+    }
 }

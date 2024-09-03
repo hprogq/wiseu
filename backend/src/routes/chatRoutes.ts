@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { chatConversation, getConversations, getConversationById } from '../controllers/chatController';
+import { messageController, conversationsController, conversationInstanceController } from '../controllers/chatController';
 
 const router = Router();
 
-router.all('/conversations', getConversations);
-router.all('/conversation', chatConversation);
-router.all('/conversation/:conversation_id', getConversationById);
+router.all('/messages', messageController);
+router.all('/conversations', conversationsController);
+router.all('/conversations/:conversation_id', conversationInstanceController);
 
 export default router;
