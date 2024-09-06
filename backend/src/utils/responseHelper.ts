@@ -5,3 +5,9 @@ export function createResponse(success: boolean, message: string, data: any = nu
         data,
     };
 }
+
+export interface Response {
+    success: boolean;
+    message: string;
+    data: any;
+}

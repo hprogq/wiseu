@@ -6,9 +6,10 @@ import { detectLanguage } from './config/i18n';
 import authRoutes from './routes/authRoutes';
 import chatRoutes from './routes/chatRoutes';
 import identityRoutes from './routes/identityRoutes';
+import serviceRoutes from "./routes/serviceRoutes";
 import RedisStore from 'connect-redis';
 import session from 'express-session';
-import redis from './config/redis';
+import { sessionRedis } from './config/redis';
 import config from './config/config';
 import {createResponse} from "./utils/responseHelper";
 
@@ -16,7 +17,7 @@ const app = express();
 
 // Initialize store.
 let redisStore = new RedisStore({
-    client: redis,
+    client: sessionRedis,
     prefix: 'wiseu:',
 });
 
@@ -50,6 +51,7 @@ app.use(morgan('dev'));
 app.use(authRoutes);
 app.use(chatRoutes);
 app.use(identityRoutes);
+app.use(serviceRoutes);
 
 app.get('/', (req, res) => {
     res.send(createResponse(true, 'WiseU OK'));

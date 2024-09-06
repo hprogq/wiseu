@@ -15,6 +15,9 @@
     "login_success": "Login Successfully",
     "user_exists": "User already exists",
     "user_not_found": "Username or Password Incorrect",
-    "password_incorrect": "Username or Password Incorrect"
+    "password_incorrect": "Username or Password Incorrect",
+    "logout_success": "Logout Successfully",
+    "unauthorized": "Unauthorized",
+    "current_user": "Current User Info Listed"
   }
 }

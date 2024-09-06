@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { registerUser, loginUser } from '../services/authService';
+import { registerUser, loginUser, getUserInfo } from '../services/auth/authService';
 import { check, validationResult } from 'express-validator';
 import { translate } from '../utils/translate';
 import { createResponse } from "../utils/responseHelper";
-import restful from './helper';
+import restful from '../helpers/restfulHelper';
 
 // 处理用户信息输出格式，仅返回部分信息
 function formatUserResponse(user: any) {
@@ -99,4 +99,21 @@ export async function session(req: Request, res: Response) {
             });
         }
     });
+}
+
+export async function getCurrentUser(req: Request, res: Response) {
+    restful(req, res, {
+        get: async (req: Request, res: Response) => {
+            const userId = req.session.user?.id; // 假设用户会话存储在 req.session.user 中
+
+            if (!userId) {
+                // 用户未登录，返回 401 Unauthorized
+                return res.status(401).json(createResponse(false, translate(req, 'auth.unauthorized')));
+            }
+
+            // 返回当前登录用户信息
+            const user = await getUserInfo(req, userId);
+            return res.status(200).json(createResponse(true, translate(req, 'auth.current_user'), { user: formatUserResponse(user) }));
+        }
+    }, true);
 }

@@ -1,14 +1,24 @@
 import { Redis } from "ioredis"
 import config from './config';
+import {printError, printInfo} from "../utils/console";
 
-const redis = new Redis(config.redisUri);
-
-redis.on("connect", function () {
-    console.log('\u001b[34m[INFO]\u001b[0m Redis connected');
+export const sessionRedis = new Redis(config.sessionRedisUri);
+export const bullMQRedis = new Redis(config.bullMQRedisUri, {
+    maxRetriesPerRequest: null
 });
 
-redis.on("error", function (error: any) {
-    console.log(error);
+sessionRedis.on("connect", function () {
+    printInfo('Session Redis connected');
 });
 
-export default redis;
+sessionRedis.on("error", function (error: any) {
+    printError(error);
+});
+
+bullMQRedis.on("connect", function () {
+    printInfo('BullMQ Redis connected');
+});
+
+bullMQRedis.on("error", function (error: any) {
+    printError(error);
+});

@@ -1,7 +1,8 @@
 import { Request } from 'express';
 import bcrypt from 'bcryptjs';
-import User, { IUser } from '../models/User';
-import { translate } from '../utils/translate';
+import User, { IUser } from '../../models/User';
+import { translate } from '../../utils/translate';
+import user from "../../models/User";
 
 export async function registerUser(req: Request, username: string, email: string, password: string): Promise<IUser | null> {
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -27,6 +28,15 @@ export async function loginUser(req: Request, emailOrUsername: string, password:
     }
 
     req.session.user = { id: user._id };
+
+    return user;
+}
+
+export async function getUserInfo(req: Request, userId: string): Promise<IUser | null> {
+    const user = await User.findOne({ _id: userId });
+    if (!user) {
+        return null;
+    }
 
     return user;
 }
