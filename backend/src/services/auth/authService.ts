@@ -1,7 +1,7 @@
 import { Request } from 'express';
 import bcrypt from 'bcryptjs';
-import User, { IUser } from '../models/User';
-import { translate } from '../utils/translate';
+import User, { IUser } from '../../models/User';
+import { translate } from '../../utils/translate';
 
 export async function registerUser(req: Request, username: string, email: string, password: string): Promise<IUser | null> {
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });

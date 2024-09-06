@@ -1,16 +1,16 @@
 import { Request, Response } from 'express';
 import { Conversation, Message } from '../models/Chat';
-import { LangChainService } from '../services/LangChainService';
+import { ChatService } from '../services/chat/chatService';
 import { createResponse } from "../utils/responseHelper";
 import mongoose from 'mongoose';
-import restful from "./helper";
+import restful from "../helpers/restfulHelper";
 import moment from "moment-timezone";
 
 export const messageController = async (req: Request, res: Response) => {
     restful(req, res, {
         post: async (req: Request, res: Response) => {
             try {
-                const langChainService = new LangChainService(req);
+                const langChainService = new ChatService(req);
 
                 const { conversationId, question } = req.body;
                 const userId = req.session.user?.id;
@@ -131,9 +131,10 @@ export const messageController = async (req: Request, res: Response) => {
                         res.end();
                     }
                 } catch (error: any) {
-                    if (error.message !== 'Aborted' || !res.headersSent) {
-                        res.status(500).json(createResponse(false, error.message));
-                    }
+                    console.log(error);
+                    // if (error.message !== 'Aborted' || !res.headersSent) {
+                    //     res.status(500).json(createResponse(false, error.message));
+                    // }
                 }
 
             } catch (error: any) {

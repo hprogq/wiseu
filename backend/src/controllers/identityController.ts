@@ -1,39 +1,15 @@
 import { Request, Response } from 'express';
 import Identity from '../models/Identity';
 import User from '../models/User';
-import DluflUndergradProvider from '../providers/DluflUndergradProvider';
+import DluflUndergradService from '../services/identity/DluflUndergradService';
 import { IdentityProvider } from '../providers/IdentityProvider';
-import restful from "./helper";
+import identityRegistry from "../services/identity/identityRegistry";
+import restful from "../helpers/restfulHelper";
 import { createResponse } from "../utils/responseHelper";
 import dotenv from 'dotenv';
 import md5 from 'md5';
 
 dotenv.config();
-
-interface IdentityType {
-    type: string;
-    name: string;
-    logo: string;
-    provider: new () => IdentityProvider;
-}
-
-const identityTypes: IdentityType[] = [
-    {
-        type: 'dlufl_undergrad',
-        name: 'DLUFL Undergraduate',
-        logo: 'path/to/dlufl_logo.png',
-        provider: DluflUndergradProvider
-    },
-    // 在这里添加更多身份类型
-];
-
-const getProvider = (type: string): IdentityProvider => {
-    const identityType = identityTypes.find(it => it.type === type);
-    if (!identityType) {
-        throw new Error('Unknown identity type');
-    }
-    return new identityType.provider();
-};
 
 export const identitiesController = (req: Request, res: Response) => {
     restful(req, res, {
@@ -52,26 +28,31 @@ export const identitiesController = (req: Request, res: Response) => {
         // bindIdentity
         post: async (req: Request, res: Response) => {
             try {
-                const { type, params } = req.body;
+                const { type, configuration } = req.body;
                 const userId = req.session.user?.id;
-                const provider = getProvider(type);
-                const defaultParams = provider.getParams();
+                const IdentityClass = identityRegistry.getIdentity(type);
+                const IdentityInstance = new IdentityClass;
+                const defaultParams = IdentityInstance.params;
 
-                if (!params) {
-                    res.status(500).json(createResponse(false, 'Missing required field: params'));
+                if (!configuration) {
+                    res.status(500).json(createResponse(false, 'Missing required field: configuration'));
                     return;
                 }
 
-                // 验证 loginInfo 是否符合 loginParameters
+                // 初始化
+                const isValid = IdentityInstance.init(configuration);
+                if (!isValid) {
+                    return res.status(400).json(createResponse(false, 'Invalid service configuration'));
+                }
                 for (const param of defaultParams) {
-                    if (param.required && !params[param.fieldName]) {
+                    if (param.required && !configuration[param.fieldName]) {
                         res.status(500).json(createResponse(false, `Missing required field: ${param.displayName}`));
                         return;
                     }
                 }
 
                 // 获取 token
-                const token = await provider.getTokenByParams(params);
+                const token = await IdentityInstance.getTokenByParams(configuration);
                 if (!token.success) {
                     res.status(500).json(createResponse(false, token.message || 'Identity validation failed'));
                     return;
@@ -82,13 +63,13 @@ export const identitiesController = (req: Request, res: Response) => {
                 }
 
                 // 使用获取的 token 获取用户信息
-                const infoResponse = await provider.getInfoByToken(token.data);
+                const infoResponse = await IdentityInstance.getInfoByToken(token.data);
                 if (!infoResponse.success || !infoResponse.data) {
                     res.status(500).json(createResponse(false, infoResponse.message || 'Failed to retrieve identity info, please try again later.'));
                     return;
                 }
 
-                const uuid = md5(infoResponse.extra.uuid || JSON.stringify(params));
+                const uuid = md5(infoResponse.extra.uuid || JSON.stringify(configuration));
                 const alias = infoResponse.extra.alias || 'Unknown';
                 // 检查是否已经绑定了相同 type 和 uniqueId 的身份
                 const existingIdentity = await Identity.findOne({
@@ -106,7 +87,7 @@ export const identitiesController = (req: Request, res: Response) => {
                 const identity = new Identity({
                     user: userId,
                     type,
-                    params: params,
+                    params: configuration,
                     token: token.data,
                     alias,
                     uuid,
@@ -155,8 +136,13 @@ export const identityInstanceController = (req: Request, res: Response) => {
         put: async (req: Request, res: Response) => {
             try {
                 const { identityId } = req.params;
-                const { params } = req.body;
+                const { configuration } = req.body;
                 const userId = req.session.user?.id;
+
+                if (!configuration) {
+                    res.status(400).json(createResponse(false, 'Missing required field: configuration'));
+                    return;
+                }
 
                 const identity = await Identity.findOne({ _id: identityId, user: userId });
                 if (!identity) {
@@ -164,32 +150,33 @@ export const identityInstanceController = (req: Request, res: Response) => {
                     return;
                 }
 
-                const provider = getProvider(identity.type);
-                const defaultParams = provider.getParams();
+                const IdentityClass = identityRegistry.getIdentity(identity.type);
+                const IdentityInstance = new IdentityClass;
+                const defaultParams = IdentityInstance.params;
 
                 // 验证参数
                 for (const param of defaultParams) {
-                    if (param.required && !params[param.fieldName]) {
+                    if (param.required && !configuration[param.fieldName]) {
                         res.status(400).json(createResponse(false, `Missing required field: ${param.displayName}`));
                         return;
                     }
                 }
 
                 // 获取新的 token
-                const token = await provider.getTokenByParams(params);
+                const token = await IdentityInstance.getTokenByParams(configuration);
                 if (!token.success || !token.data) {
                     res.status(400).json(createResponse(false, token.message || 'Identity validation failed'));
                     return;
                 }
 
                 // 获取新的用户信息
-                const infoResponse = await provider.getInfoByToken(token.data);
+                const infoResponse = await IdentityInstance.getInfoByToken(token.data);
                 if (!infoResponse.success || !infoResponse.data) {
                     res.status(500).json(createResponse(false, infoResponse.message || 'Failed to retrieve identity info'));
                     return;
                 }
 
-                const uuid = md5(infoResponse.extra.uuid || JSON.stringify(params));
+                const uuid = md5(infoResponse.extra.uuid || JSON.stringify(configuration));
                 const alias = infoResponse.extra.alias || 'Unknown';
 
                 // 检查是否已有相同 uuid 的身份，但不是当前更新的身份
@@ -206,7 +193,7 @@ export const identityInstanceController = (req: Request, res: Response) => {
                 }
 
                 // 更新身份信息
-                identity.params = params;
+                identity.params = configuration;
                 identity.token = token.data;
                 identity.alias = alias;
                 identity.uuid = uuid;
@@ -252,8 +239,21 @@ export const identityTypesController = (req: Request, res: Response) => {
     restful(req, res, {
         // getIdentityTypes
         get: async (req: Request, res: Response) => {
-            const types = identityTypes.map(({ type, name, logo }) => ({ type, name, logo }));
-            res.json(createResponse(true, 'Success', { types }));
+            try {
+                const Identities = Object.keys(identityRegistry.registry).map((key) => {
+                    const IdentityClass = identityRegistry.getIdentity(key);
+                    const identityInstance = new IdentityClass();
+                    return {
+                        type: identityInstance.type,
+                        name: identityInstance.name,
+                        description: identityInstance.description,
+                        icon: identityInstance.icon,
+                    };
+                });
+                res.json(createResponse(true, 'Available Identities fetched successfully', Identities));
+            } catch (error: any) {
+                res.status(500).json(createResponse(false, error.message));
+            }
         },
     }, true);
 };
@@ -265,8 +265,9 @@ export const identityTypeParamsController = (req: Request, res: Response) => {
         get: async (req: Request, res: Response) => {
             try {
                 const { type } = req.params;
-                const provider = getProvider(type);
-                const params = provider.getParams();
+                const IdentityClass = identityRegistry.getIdentity(type);
+                const IdentityInstance = new IdentityClass;
+                const params = IdentityInstance.params;
 
                 res.json(createResponse(true, 'Success', params));
             } catch (error: any) {
@@ -290,8 +291,9 @@ export const identityAliasController = async (req: Request, res: Response) => {
                     return;
                 }
 
-                const provider = getProvider(identity.type);
-                const infoResponse = await provider.getInfoByToken(identity.token);
+                const IdentityClass = identityRegistry.getIdentity(identity.type);
+                const IdentityInstance = new IdentityClass;
+                const infoResponse = await IdentityInstance.getInfoByToken(identity.token);
                 if (!infoResponse.success || !infoResponse.data) {
                     res.status(500).json(createResponse(false, infoResponse.message || 'Failed to retrieve identity info'));
                     return;
@@ -321,13 +323,14 @@ export const authorizeIdentity = async (identityId: string, service: any): Promi
             return { success: false, message: 'Identity not found' };
         }
 
-        const provider = getProvider(identity.type);
+        const IdentityClass = identityRegistry.getIdentity(identity.type);
+        const IdentityInstance = new IdentityClass;
 
         // 验证 token
-        const validationResult = await provider.validateToken(identity.token);
+        const validationResult = await IdentityInstance.validateToken(identity.token);
         if (!validationResult.success) {
             // Token 无效，尝试刷新
-            const refreshResult = await provider.getTokenByParams(identity.params);
+            const refreshResult = await IdentityInstance.getTokenByParams(identity.params);
             if (!refreshResult.success || !refreshResult.data) {
                 return { success: false, message: 'Failed to refresh token' };
             }
@@ -339,7 +342,7 @@ export const authorizeIdentity = async (identityId: string, service: any): Promi
         }
 
         // 使用有效的 token 进行服务授权
-        const authResult = await provider.authorizeServiceByToken(identity.token, service);
+        const authResult = await IdentityInstance.authorizeServiceByToken(identity.token, service);
         if (!authResult.success) {
             return { success: false, message: 'Service authorization failed' };
         }

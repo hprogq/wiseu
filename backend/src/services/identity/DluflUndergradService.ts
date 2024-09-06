@@ -1,18 +1,43 @@
-import {IdentityProvider, Parameter} from './IdentityProvider';
+import { IdentityProvider } from '../../providers/IdentityProvider';
+import { Parameter } from '../../providers/CommonProvider';
 import axios, {AxiosResponse} from "axios";
 import setCookie from 'set-cookie-parser';
 import * as cheerio from 'cheerio';
-import { strEnc } from '../utils/des';
+import { strEnc } from '../../utils/des';
 import xml2js from 'xml2js';
 
-class DluflUndergradProvider extends IdentityProvider {
-    private identityType = "dlufl_undergrad";
+class DluflUndergradService extends IdentityProvider {
+    name = 'DLUFL Library Service';
+    description = 'Provides access to the DLUFL library resources';
+    icon = 'https://example.com/icon.png';
+    type = 'dlufl_library';
+    params: Parameter[] = [
+        {
+            fieldName: 'username',
+            fieldType: 'string',
+            displayName: 'Username',
+            required: true,
+            description: 'Your student ID or username.'
+        },
+        {
+            fieldName: 'password',
+            fieldType: 'password',
+            displayName: 'Password',
+            required: true,
+            description: 'Your account password.'
+        }
+    ];
+
     private casBase = 'https://cas.dlufl.edu.cn/cas';
     private dcpServiceUrl = 'https://i.dlufl.edu.cn/dcp/';
     private requestHeaders = {
         'User-Agent': `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36`,
         'Content-Type': 'application/x-www-form-urlencoded',
     };
+
+    constructor() {
+        super();
+    }
 
     async getTokenByParams(params: any): Promise<{ success: boolean; data?: any; message?: string }> {
         try {
@@ -283,25 +308,6 @@ class DluflUndergradProvider extends IdentityProvider {
             return { success: false, message: error.message };
         }
     }
-
-    getParams(): Parameter[] {
-        return [
-            {
-                fieldName: 'username',
-                fieldType: 'string',
-                displayName: 'Username',
-                required: true,
-                description: 'Your student ID or username.'
-            },
-            {
-                fieldName: 'password',
-                fieldType: 'password',
-                displayName: 'Password',
-                required: true,
-                description: 'Your account password.'
-            }
-        ];
-    }
 }
 
-export default DluflUndergradProvider;
+export default DluflUndergradService;

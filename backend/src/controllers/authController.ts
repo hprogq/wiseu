@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { registerUser, loginUser } from '../services/authService';
+import { registerUser, loginUser } from '../services/auth/authService';
 import { check, validationResult } from 'express-validator';
 import { translate } from '../utils/translate';
 import { createResponse } from "../utils/responseHelper";
-import restful from './helper';
+import restful from '../helpers/restfulHelper';
 
 // 处理用户信息输出格式，仅返回部分信息
 function formatUserResponse(user: any) {
