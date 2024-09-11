@@ -42,6 +42,7 @@
     "morgan": "^1.10.0",
     "openai": "^4.56.0",
     "set-cookie-parser": "^2.7.0",
+    "tiktoken": "^1.0.16",
     "xml2js": "^0.6.2",
     "zod": "^3.23.8"
   },

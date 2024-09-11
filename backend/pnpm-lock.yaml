@@ -98,6 +98,9 @@ importers:
       set-cookie-parser:
         specifier: ^2.7.0
         version: 2.7.0
+      tiktoken:
+        specifier: ^1.0.16
+        version: 1.0.16
       xml2js:
         specifier: ^0.6.2
         version: 0.6.2
@@ -1806,6 +1809,9 @@ packages:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
     engines: {node: '>=4'}
 
+  tiktoken@1.0.16:
+    resolution: {integrity: sha512-hRcORIGF2YlAgWx3nzrGJOrKSJwLoc81HpXmMQk89632XAgURc7IeV2FgQ2iXo9z/J96fCvpsHg2kWoHcbj9fg==}
+
   to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
     engines: {node: '>=8.0'}
@@ -3183,6 +3189,8 @@ snapshots:
   supports-color@5.5.0:
     dependencies:
       has-flag: 3.0.0
+
+  tiktoken@1.0.16: {}
 
   to-regex-range@5.0.1:
     dependencies:

@@ -47,41 +47,69 @@ export const messageController = async (req: Request, res: Response) => {
             abortController.abort();
           });
 
-          // Save the user's message
-          await chatService.createMessage(conversation._id, "user", question);
+          // Save the user's message and add it to the conversation
+          const userMessage = await chatService.createMessage(
+            conversation._id,
+            "user",
+            question,
+          );
+          conversation.messages.push(userMessage._id); // Add the message to the conversation
+          await conversation.save(); // Save the updated conversation
 
           res.write(
             `data: ${JSON.stringify(
               createResponse(true, "Received", {
                 conversationId: conversation._id,
                 role: "assistant",
-                content: "",
+                content: "...", // Placeholder content
+                status: "received",
                 complete: false,
               }),
             )}\n\n`,
           );
 
+          let fullResponse = "";
+
           const sendToken = (token: string, role: string = "assistant") => {
             if (!isConnected || !token.trim()) return;
 
-            res.write(
-              `data: ${JSON.stringify(
-                createResponse(true, "Partial", {
-                  conversationId: conversation._id,
-                  role,
-                  content: token,
-                  complete: false,
-                }),
-              )}\n\n`,
-            );
+            if (role === "assistant") {
+              fullResponse += token; // Accumulate tokens
+
+              res.write(
+                `data: ${JSON.stringify(
+                  createResponse(true, "Partial", {
+                    conversationId: conversation._id,
+                    role,
+                    content: fullResponse, // Return full accumulated content
+                    status: "partial",
+                    complete: false,
+                  }),
+                )}\n\n`,
+              );
+            } else {
+              res.write(
+                `data: ${JSON.stringify(
+                  createResponse(true, "Partial", {
+                    conversationId: conversation._id,
+                    role,
+                    content: token, // Return full accumulated content
+                    status: "partial",
+                    complete: false,
+                  }),
+                )}\n\n`,
+              );
+            }
           };
 
           try {
-            const fullResponse = await chatService.chat(
+            // Pass the conversation object into the chat service
+            const finalResponse = await chatService.chat(
               question,
               previousMessages,
               sendToken,
               abortController.signal,
+              conversation, // Pass conversation to chat service
             );
 
             if (isConnected) {
@@ -90,7 +118,8 @@ export const messageController = async (req: Request, res: Response) => {
                   createResponse(true, "Completed", {
                     conversationId: conversation._id,
                     role: "assistant",
-                    content: fullResponse,
+                    content: finalResponse,
+                    status: "completed",
                     complete: true,
                   }),
                 )}\n\n`,

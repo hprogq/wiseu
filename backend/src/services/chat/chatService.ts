@@ -12,8 +12,7 @@ import Service from "../../models/Service";
 import serviceRegistry from "../service/serviceRegistry";
 import mongoose from "mongoose";
 import { DynamicStructuredTool, DynamicTool } from "@langchain/core/tools";
-import { Message as MessageModel } from "../../models/Chat"; // The actual Mongoose model
-import { Document } from "mongoose";
+import { Message as MessageModel } from "../../models/Chat";
 
 export class ChatService {
   private model: ChatOpenAI;
@@ -49,6 +48,7 @@ export class ChatService {
       conversation = new Conversation({
         userId: new mongoose.Types.ObjectId(userId),
       });
+      await conversation.save(); // Save the newly created conversation immediately
     }
     return conversation;
   }
@@ -58,10 +58,16 @@ export class ChatService {
     previousMessages: InstanceType<typeof MessageModel>[],
     onTokenReceived: (token: string, role?: string) => void,
     signal: AbortSignal,
+    conversation: any, // Pass conversation to chat method
   ): Promise<string> {
+    const currentDate = new Date();
+    const date = currentDate.toLocaleDateString();
+    const daysOfWeek = ["日", "一", "二", "三", "四", "五", "六"];
+    const dayOfWeek = daysOfWeek[currentDate.getDay()];
+    const time = currentDate.toLocaleTimeString();
+
     const systemMessage = new SystemMessage({
-      content:
-        "你是WiseU，一个专注于大学生的生活智能助理。接下来用户将与你进行对话。",
+      content: `你是WiseU，一个专注于大学生的生活智能助理。今天是${date}（${dayOfWeek}），现在是${time}。接下来用户将与你进行对话。`,
     });
 
     const servicePromptMessages: BaseMessage[] = [];
@@ -107,15 +113,13 @@ export class ChatService {
     const stream = await modelWithTools.stream(promptMessages, { signal });
 
     // Create an initial message for the AI response
-    const conversation = await this.getOrCreateConversation(
-      undefined,
-      this.req.session.user?.id,
-    );
     const aiMessage = await this.createMessage(
       conversation._id,
       "assistant",
       "",
     );
+    conversation.messages.push(aiMessage._id); // Associate the message with the conversation
+    await conversation.save(); // Save the updated conversation
 
     for await (const chunk of stream) {
       if (chunk.tool_calls && chunk.tool_calls.length > 0) {
@@ -158,7 +162,7 @@ export class ChatService {
                 if (typeof token === "string") {
                   onTokenReceived(token);
                   fullResponse += token;
-                  await this.updateMessage(aiMessage._id, fullResponse);
+                  await this.updateMessage(aiMessage._id, fullResponse); // Update message content
                 }
               }
             } else {
@@ -174,7 +178,7 @@ export class ChatService {
         if (typeof token === "string") {
           onTokenReceived(token);
           fullResponse += token;
-          await this.updateMessage(aiMessage._id, fullResponse);
+          await this.updateMessage(aiMessage._id, fullResponse); // Update message content
         }
       }
     }
@@ -198,9 +202,5 @@ export class ChatService {
 
   async updateMessage(messageId: mongoose.Types.ObjectId, content: string) {
     await Message.findByIdAndUpdate(messageId, { content });
-  }
-
-  async saveConversation(conversation: any) {
-    await conversation.save();
   }
 }
