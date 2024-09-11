@@ -42,7 +42,8 @@
     "morgan": "^1.10.0",
     "openai": "^4.56.0",
     "set-cookie-parser": "^2.7.0",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -60,6 +61,7 @@
     "@types/set-cookie-parser": "^2.4.10",
     "@types/xml2js": "^0.4.14",
     "nodemon": "^3.1.4",
+    "prettier": "^3.3.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   }

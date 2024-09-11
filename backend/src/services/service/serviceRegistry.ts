@@ -1,11 +1,13 @@
+import { ServiceProvider, ServiceConstructor } from '../../providers/ServiceProvider';
 import DluflLibraryService from './DluflLibraryService';
 import DluflKnowledgeService from "./DluflKnowledgeService";
-import { ServiceProvider, ServiceConstructor } from '../../providers/ServiceProvider';
+import DluflTimetableService from "./DluflTimetableService";
 
 class ServiceRegistry {
     public static registry: { [key: string]: ServiceConstructor } = {
         dlufl_library: DluflLibraryService,
         dlufl_knowledge: DluflKnowledgeService,
+        dlufl_timetable: DluflTimetableService
     };
 
     static getService(type: string): ServiceConstructor {

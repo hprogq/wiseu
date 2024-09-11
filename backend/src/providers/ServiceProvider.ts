@@ -1,6 +1,7 @@
 import { createResponse } from "../utils/responseHelper";
 import { IIdentity } from "../models/Identity";
 import { Parameter, Configuration } from "./CommonProvider";
+import { DynamicTool, DynamicStructuredTool } from "@langchain/core/tools";
 
 export type ServiceConstructor = new () => ServiceProvider;
 
@@ -13,7 +14,7 @@ export abstract class ServiceProvider {
     abstract identityType: string[]; // 依赖的身份类型列表
     abstract params: Parameter[]; // 服务所需的参数
     abstract interval: number; // 定时任务的执行间隔(s)，设置为0表示不执行定时任务
-    abstract rag: boolean; // 是否支持 RAG 模型
+    abstract tools: (DynamicTool | DynamicStructuredTool<any>)[]; // 服务所需的工具列表
 
     protected identityId: string = ""; // 服务关联的身份
     protected serviceId: string = "";

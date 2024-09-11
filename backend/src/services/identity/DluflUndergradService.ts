@@ -5,6 +5,7 @@ import setCookie from 'set-cookie-parser';
 import * as cheerio from 'cheerio';
 import { strEnc } from '../../utils/des';
 import xml2js from 'xml2js';
+import {authorizeIdentity} from "../../controllers/identityController";
 
 class DluflUndergradService extends IdentityProvider {
     name = 'DLUFL Library Service';
@@ -30,6 +31,7 @@ class DluflUndergradService extends IdentityProvider {
 
     private casBase = 'https://cas.dlufl.edu.cn/cas';
     private dcpServiceUrl = 'https://i.dlufl.edu.cn/dcp/';
+    private dcpCookieList = ["dcp114"];
     private requestHeaders = {
         'User-Agent': `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36`,
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -203,6 +205,81 @@ class DluflUndergradService extends IdentityProvider {
         }
     }
 
+    async dcpGetUserInfo(token: any): Promise<{ success: boolean; data?: any; message?: string; }> {
+        // 使用合并后的 authorize 方法获取 ticket
+        const authResponse = await this.authorizeServiceByToken(token, { url: this.dcpServiceUrl });
+        if (!authResponse.success) {
+            return { success: false, message: authResponse.message };
+        }
+
+        const location = `${this.dcpServiceUrl}?ticket=${authResponse.data?.ticket}`;
+
+        const callbackResponse: AxiosResponse = await axios.get(location, {
+            maxRedirects: 0,
+            validateStatus: (status) => status >= 200 && status < 400,
+            headers: {...this.requestHeaders},
+        });
+
+        const setCookieHeader = callbackResponse.headers['set-cookie'];
+        if (!setCookieHeader) {
+            return {success: false, message: 'Set-Cookie header not found'};
+        }
+
+        const cookies = setCookie.parse(setCookieHeader);
+        const cookieMap = new Map(cookies.map(cookie => [cookie.name, cookie.value]));
+
+        const missingCookies = this.dcpCookieList.filter(cookieName => !cookieMap.has(cookieName));
+        let cookie = "";
+        if (missingCookies.length === 0) {
+            cookie = this.dcpCookieList.map(cookieName => `${cookieName}=${cookieMap.get(cookieName)}`).join('; ');
+        } else {
+            return { success: false, message: `Missing cookies: ${missingCookies.join(', ')}` };
+        }
+
+        const userTypeResponse: AxiosResponse = await axios.post(`${this.dcpServiceUrl}/sys/uacm/profile/getUserType`, {}, {
+            headers: {
+                "Content-Type": "application/json;charset=UTF-8",
+                "Cookie": cookie
+            }
+        });
+
+        if (!Array.isArray(userTypeResponse.data)) {
+            return { success: false, message: 'Unexpected response format for user type.' };
+        }
+
+        const validUserTypes = userTypeResponse.data.filter((item: any) => typeof item === 'object' && item !== null);
+        if (validUserTypes.length === 0) {
+            return { success: false, message: 'No valid user type found.' };
+        }
+
+        const userType = validUserTypes[0];
+        if (!userType.ID_NUMBER) {
+            return { success: false, message: 'User type does not contain ID_NUMBER.' };
+        }
+
+        const encryptedId = strEnc(userType.ID_NUMBER, 'tp', 'des', 'param');
+        const userInfoResponse: AxiosResponse = await axios.post(`${this.dcpServiceUrl}/sys/uacm/profile/getUserById`, {
+            BE_OPT_ID: encryptedId
+        }, {
+            headers: {
+                "Content-Type": "application/json;charset=UTF-8",
+                "Cookie": cookie
+            }
+        });
+
+        // 检查必要字段是否存在
+        const userInfo = userInfoResponse.data;
+        if (!userInfo || !userInfo.ID_TYPE || !userInfo.IS_ACTIVE || !userInfo.ID_NUMBER || !userInfo.USER_NAME || !userInfo.UNIT_NAME) {
+            return { success: false, message: 'Failed to retrieve required user information.' };
+        }
+
+        if (userInfo.ID_TYPE !== '本科生') {
+            return { success: false, message: 'This identity service only supports undergraduate student accounts.' };
+        }
+
+        return { success: true, data: userInfo, message: 'OK' };
+    }
+
     async getInfoByToken(token: any): Promise<{ success: boolean; data?: any; extra?: any; message?: string; }> {
         try {
             const authResponse = await this.authorizeServiceByToken(token, { url: this.dcpServiceUrl });
@@ -251,58 +328,18 @@ class DluflUndergradService extends IdentityProvider {
                 userInfo[name] = attribute['$'].value || '';
             });
 
-            let extraInfo: any = [];
-            if (userInfo['user_id'] && userInfo['unit_name'] && userInfo['id_number'] && userInfo['user_name']) {
-                extraInfo['alias'] = `${userInfo['user_name']} / ${userInfo['unit_name']} / ${userInfo['id_number']}`;
-                extraInfo['uuid'] = userInfo['user_id'] || '';
-            }
-
-            /* // 使用合并后的 authorize 方法获取 ticket
-            const authResponse = await this.authorize(identityOrToken, this.dcpValidateUrl, ["dcp114"]);
-            if (!authResponse.success) {
-                return { success: false, message: authResponse.message };
-            }
-
-            const userTypeResponse: AxiosResponse = await axios.post(`${this.dcpValidateUrl}/sys/uacm/profile/getUserType`, {}, {
-                headers: {
-                    "Content-Type": "application/json;charset=UTF-8",
-                    "Cookie": authResponse.cookie
-                }
-            });
-
-            if (!Array.isArray(userTypeResponse.data)) {
-                return { success: false, message: 'Unexpected response format for user type.' };
-            }
-
-            const validUserTypes = userTypeResponse.data.filter((item: any) => typeof item === 'object' && item !== null);
-            if (validUserTypes.length === 0) {
-                return { success: false, message: 'No valid user type found.' };
-            }
-
-            const userType = validUserTypes[0];
-            if (!userType.ID_NUMBER) {
-                return { success: false, message: 'User type does not contain ID_NUMBER.' };
-            }
-
-            const encryptedId = strEnc(userType.ID_NUMBER, 'tp', 'des', 'param');
-            const userInfoResponse: AxiosResponse = await axios.post(`${this.dcpValidateUrl}/sys/uacm/profile/getUserById`, {
-                BE_OPT_ID: encryptedId
-            }, {
-                headers: {
-                    "Content-Type": "application/json;charset=UTF-8",
-                    "Cookie": authResponse.cookie
-                }
-            });
-
-            // 检查必要字段是否存在
-            const userInfo = userInfoResponse.data;
-            if (!userInfo || !userInfo.ID_NUMBER || !userInfo.RESOURCE_ID || !userInfo.UNIT_NAME || !userInfo.USER_NAME) {
+            if (!userInfo['user_id'] || !userInfo['unit_name'] || !userInfo['id_number'] || !userInfo['user_name'] || !userInfo['id_type']) {
                 return { success: false, message: 'Failed to retrieve required user information.' };
             }
 
-            const displayInfo : string = `${userInfo.USER_NAME} / ${userInfo.UNIT_NAME} / ${userInfo.ID_NUMBER}`;
+            if (userInfo['id_type'] !== '1') {
+                return { success: false, message: 'This identity service only supports undergraduate student accounts.' };
+            }
 
-            return { success: true, message: 'User info fetched successfully', displayInfo: displayInfo, uniqueId: userInfo.RESOURCE_ID }; */
+            let extraInfo: any = [];
+            extraInfo['alias'] = `${userInfo['user_name']} / ${userInfo['unit_name']} / ${userInfo['id_number']}`;
+            extraInfo['uuid'] = userInfo['user_id'] || '';
+
             return { success: true, message: 'Success', data: userInfo, extra: extraInfo };
         } catch (error: any) {
             return { success: false, message: error.message };

@@ -1,100 +1,206 @@
 import { Request } from "express";
 import { ChatOpenAI } from "@langchain/openai";
-import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
-import { BaseMessage } from "@langchain/core/messages";
-import config from "../../config/config";
-import { MessageDocument } from "../../models/Chat";
+import {
+  HumanMessage,
+  AIMessage,
+  SystemMessage,
+  BaseMessage,
+  ToolMessage,
+} from "@langchain/core/messages";
+import { Message, Conversation } from "../../models/Chat";
 import Service from "../../models/Service";
 import serviceRegistry from "../service/serviceRegistry";
 import mongoose from "mongoose";
+import { DynamicStructuredTool, DynamicTool } from "@langchain/core/tools";
+import { Message as MessageModel } from "../../models/Chat"; // The actual Mongoose model
+import { Document } from "mongoose";
 
 export class ChatService {
-    private model: ChatOpenAI;
-    private req: Request;
+  private model: ChatOpenAI;
+  private req: Request;
 
-    constructor(req: Request) {
-        this.model = new ChatOpenAI({
-            apiKey: config.openAIApiKey,
-            model: "glm-4-plus",
-            temperature: 0.8,
-            streaming: true,
-            user: 'wiseu_' + req.session.user?.id,
-            configuration: {
-                baseURL: "https://open.bigmodel.cn/api/paas/v4",
-            },
-        });
+  constructor(req: Request) {
+    this.model = new ChatOpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      model: "glm-4-plus",
+      temperature: 0.8,
+      streaming: true,
+      user: "wiseu_" + req.session.user?.id,
+      configuration: {
+        baseURL: "https://open.bigmodel.cn/api/paas/v4",
+      },
+    });
 
-        this.req = req;
+    this.req = req;
+  }
+
+  async getOrCreateConversation(
+    conversationId: string | undefined,
+    userId: string,
+  ) {
+    let conversation;
+    if (conversationId) {
+      conversation =
+        await Conversation.findById(conversationId).populate("messages");
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+    } else {
+      conversation = new Conversation({
+        userId: new mongoose.Types.ObjectId(userId),
+      });
+    }
+    return conversation;
+  }
+
+  async chat(
+    question: string,
+    previousMessages: InstanceType<typeof MessageModel>[],
+    onTokenReceived: (token: string, role?: string) => void,
+    signal: AbortSignal,
+  ): Promise<string> {
+    const systemMessage = new SystemMessage({
+      content:
+        "你是WiseU，一个专注于大学生的生活智能助理。接下来用户将与你进行对话。",
+    });
+
+    const servicePromptMessages: BaseMessage[] = [];
+    const serviceTools: (DynamicStructuredTool | DynamicTool)[] = [];
+    const userId = this.req.session.user?.id;
+    const activeServices = await Service.find({ user: userId, status: "UP" });
+
+    for (const service of activeServices) {
+      try {
+        const ServiceClass = serviceRegistry.getService(service.type);
+        const serviceInstance = new ServiceClass();
+
+        await serviceInstance.init(
+          service.identityId,
+          service.configuration,
+          service._id.toString(),
+        );
+
+        const servicePrompt = await serviceInstance.prompt(question);
+        servicePromptMessages.push(
+          new SystemMessage({ content: servicePrompt }),
+        );
+
+        serviceTools.push(...serviceInstance.tools);
+      } catch (error: any) {
+        console.error("Failed to inject service prompt", error);
+      }
     }
 
-    async chat(
-        question: string,
-        previousMessages: MessageDocument[],
-        onTokenReceived: (token: string) => void,
-        signal: AbortSignal
-    ): Promise<string> {
+    const promptMessages: BaseMessage[] = [
+      systemMessage,
+      ...servicePromptMessages,
+      ...previousMessages.map((msg) => {
+        return msg.role === "user"
+          ? new HumanMessage({ content: msg.content })
+          : new AIMessage({ content: msg.content });
+      }),
+      new HumanMessage({ content: question }),
+    ];
 
-        // 基本系统消息
-        const systemMessage = new SystemMessage({
-            content: "你是WiseU，一个专注于大学生的生活智能助理。接下来用户将与你进行对话。"
-        });
+    let fullResponse = "";
+    const modelWithTools = this.model.bindTools(serviceTools);
+    const stream = await modelWithTools.stream(promptMessages, { signal });
 
-        const promptMessages: BaseMessage[] = [
-            systemMessage,
-            ...previousMessages.map((msg) => {
-                return msg.role === 'user'
-                    ? new HumanMessage({ content: msg.content })
-                    : new AIMessage({ content: msg.content });
-            }),
-        ];
+    // Create an initial message for the AI response
+    const conversation = await this.getOrCreateConversation(
+      undefined,
+      this.req.session.user?.id,
+    );
+    const aiMessage = await this.createMessage(
+      conversation._id,
+      "assistant",
+      "",
+    );
 
-        // 获取用户启用的服务并注入服务 prompt 和 RAG 上下文
-        const userId = this.req.session.user?.id;
-        const activeServices = await Service.find({ user: userId, status: 'UP' });
+    for await (const chunk of stream) {
+      if (chunk.tool_calls && chunk.tool_calls.length > 0) {
+        for (const toolCall of chunk.tool_calls) {
+          if (!toolCall || !toolCall.id) {
+            continue;
+          }
 
-        for (const service of activeServices) {
-            try {
-                const ServiceClass = serviceRegistry.getService(service.type);
-                const serviceInstance = new ServiceClass();
+          const toolName = toolCall.name;
+          const toolArgs = toolCall.args;
 
-                // 初始化服务
-                const serviceId = service._id as mongoose.Types.ObjectId;
-                await serviceInstance.init(service.identityId, service.configuration, serviceId.toString());
+          // Send the "正在调用XXX" message (start notice)
+          onTokenReceived(`正在调用 ${toolName} 工具...`, "notice");
 
-                // 获取服务的 prompt 并注入
-                const servicePrompt = await serviceInstance.prompt(question);
-                promptMessages.push(new SystemMessage({ content: servicePrompt }));
-            } catch {
-                console.error("Failed to inject service prompt");
-            }
-        }
+          const selectedTool = serviceTools.find(
+            (tool) => tool.name === toolName,
+          );
+          if (selectedTool) {
+            const toolResult = await selectedTool.invoke(toolArgs);
 
-        promptMessages.push(new HumanMessage({ content: question }));
+            if (toolResult.success) {
+              // Create a ToolMessage with the tool result and feed it back to the model
+              const toolMessage = new ToolMessage({
+                content: toolResult.data,
+                tool_call_id: toolCall.id,
+              });
 
-        let fullResponse = "";
+              // Send the tool result back to the model for further processing
+              const updatedMessages = [...promptMessages, toolMessage];
 
-        // 开始流式处理聊天消息
-        const stream = await this.model.stream(promptMessages, { signal });
+              // Continue processing the stream after the tool invocation
+              const postToolStream = await modelWithTools.stream(
+                updatedMessages,
+                { signal },
+              );
 
-        for await (const chunk of stream) {
-            const token = chunk.content;
-            if (typeof token === 'string') {
-                onTokenReceived(token);
-                fullResponse += token;
-            } else if (Array.isArray(token)) {
-                const joinedToken = token.join('');
-                onTokenReceived(joinedToken);
-                fullResponse += joinedToken;
+              // Send the additional tokens generated after the tool result
+              for await (const postToolChunk of postToolStream) {
+                const token = postToolChunk.content;
+                if (typeof token === "string") {
+                  onTokenReceived(token);
+                  fullResponse += token;
+                  await this.updateMessage(aiMessage._id, fullResponse);
+                }
+              }
             } else {
-                throw new Error("Unsupported content type in AIMessageChunk");
+              onTokenReceived(`调用 ${toolName} 工具失败`, "error");
             }
+
+            // Send the "工具调用完成" message (end notice)
+            onTokenReceived(`${toolName} 工具调用完成`, "notice");
+          }
         }
-
-        return fullResponse;
+      } else {
+        const token = chunk.content;
+        if (typeof token === "string") {
+          onTokenReceived(token);
+          fullResponse += token;
+          await this.updateMessage(aiMessage._id, fullResponse);
+        }
+      }
     }
 
-    // 生成 RAG 上下文
-    private generateRAGContext(relatedDocs: any[]): string {
-        return relatedDocs.map(doc => `${doc.title}: ${doc.pageContent}`).join("\n\n");
-    }
+    return fullResponse;
+  }
+
+  async createMessage(
+    conversationId: mongoose.Types.ObjectId,
+    role: string,
+    content: string,
+  ) {
+    const message = new Message({
+      conversationId,
+      role,
+      content,
+    });
+    await message.save();
+    return message;
+  }
+
+  async updateMessage(messageId: mongoose.Types.ObjectId, content: string) {
+    await Message.findByIdAndUpdate(messageId, { content });
+  }
+
+  async saveConversation(conversation: any) {
+    await conversation.save();
+  }
 }

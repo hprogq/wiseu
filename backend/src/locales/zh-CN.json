@@ -8,7 +8,8 @@
     "password_uppercase": "密码必须包含至少一个大写字母",
     "password_lowercase": "密码必须包含至少一个小写字母",
     "password_digit": "密码必须包含至少一个数字",
-    "password_special": "密码必须包含至少一个特殊字符"
+    "password_special": "密码必须包含至少一个特殊字符",
+    "username_password_required": "用户名或密码为空"
   },
   "auth": {
     "register_success": "注册成功",

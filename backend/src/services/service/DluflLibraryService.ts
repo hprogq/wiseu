@@ -11,6 +11,7 @@ class DluflLibraryService extends ServiceProvider {
     params: Parameter[] = [];
     rag = false;
     interval = 0;
+    tools = [];
 
     constructor() {
         super();
