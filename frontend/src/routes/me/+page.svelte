@@ -1,6 +1,7 @@
 <script lang="ts">
     import {apiFetch} from '$lib/api';
     import {goto} from '$app/navigation';
+    import {goBack} from "$lib/common";
 
     interface User {
         id: string;
@@ -46,13 +47,14 @@
 
 <div class="flex flex-col h-screen">
     <!-- 顶部菜单栏 -->
-    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/80 backdrop-blur-md flex-shrink-0">
+    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
         <div class="navbar-start">
-            <button class="btn btn-ghost" on:click={chat}>
-                <!-- 加号图标 -->
+            <button class="btn btn-ghost" on:click={goBack}>
+                <!-- 返回图标 -->
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                      class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 19l-7-7 7-7"/>
                 </svg>
             </button>
         </div>
@@ -60,9 +62,10 @@
             <a href="/" class="btn btn-ghost normal-case text-xl">WiseU</a>
         </div>
         <div class="navbar-end">
-            <button class="btn btn-ghost" on:click={logout}>
+            <button class="btn btn-error" on:click={logout}>
+                <span class="text-white">Logout</span>
                 <!-- 退出图标 -->
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white"
                      class="w-6 h-6">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-10V7"/>

@@ -9,11 +9,7 @@
     if (data.user) {
         setUser(data.user); // 设置用户信息
     }
-
 </script>
-
-<slot/>
-<slot/>
 
 <div class="app">
     <main>

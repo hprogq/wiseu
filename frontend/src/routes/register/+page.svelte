@@ -1,5 +1,6 @@
 <script lang="ts">
     import {apiFetch} from '$lib/api';
+    import {goBack} from "$lib/common";
     import {writable} from 'svelte/store';
     import {goto} from '$app/navigation'; // 导入 goto 方法
     import {fly} from 'svelte/transition';
@@ -67,6 +68,23 @@
 
 <!-- 浅色毛玻璃背景 -->
 <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-100 via-white to-blue-50">
+    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
+        <div class="navbar-start">
+            <button class="btn btn-ghost" on:click={goBack}>
+                <!-- 返回图标 -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                     class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+        </div>
+        <div class="navbar-center">
+            <a href="/" class="btn btn-ghost normal-case text-xl">Register Page</a>
+        </div>
+        <div class="navbar-end"></div>
+    </div>
+
     <!-- 背景毛玻璃效果 -->
     <div class="absolute inset-0 bg-white opacity-50 backdrop-filter backdrop-blur-md"></div>
 

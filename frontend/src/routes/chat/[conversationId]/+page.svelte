@@ -6,7 +6,8 @@
     import {fly, fade} from "svelte/transition";
     import {v4 as uuidv4} from 'uuid';
     import {goto, pushState} from "$app/navigation";
-    import {marked} from 'marked'; // 引入 markdown 渲染库
+    import {marked} from 'marked';
+    import {chatDefaultMessage} from "$lib/common";
 
     export let data;
 
@@ -21,13 +22,7 @@
         chatStore.setConversationId(null);
         chatStore.clearMessages();
 
-        const defaultMessage = {
-            id: uuidv4(),
-            content: await marked('欢迎来到 WiseU Chat! 在这里开始你的对话。'),
-            sender: 'assistant' as const
-        };
-
-        chatStore.addMessage(defaultMessage); // 添加预置消息
+        chatStore.addMessage(chatDefaultMessage); // 添加预置消息
     }
 
     function generateUniqueMessageId() {
@@ -41,7 +36,7 @@
         if (!newMessage.trim()) return;
 
         isLoading = true;
-        const userMessage = {id: generateUniqueMessageId(), content: newMessage, sender: 'user' as const};
+        const userMessage = {id: generateUniqueMessageId(), content: await marked(newMessage), sender: 'user' as const};
         chatStore.addMessage(userMessage);
         scrollToBottom(); // 发送消息时滚动到最底部
 
@@ -156,10 +151,11 @@
             </button>
         </div>
         <div class="navbar-center">
-            <h1 class="text-xl font-bold">WiseU</h1>
+            <a href="/" class="btn btn-ghost normal-case text-xl">WiseU</a>
         </div>
         <div class="navbar-end">
-            <button class="btn btn-ghost" on:click={startNewChat}>
+            <button class="btn" on:click={startNewChat}>
+                New Chat
                 <!-- 加号图标 -->
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                      class="w-6 h-6">
@@ -236,11 +232,11 @@
     .message-container {
         scrollbar-width: thin;
         scrollbar-color: rgba(155, 155, 155, 0.5) transparent;
-        padding-top: 4.125rem; /* 为固定的导航栏留出空间 */
+        padding-top: 6rem; /* 为固定的导航栏留出空间 */
     }
 
     .message-container::-webkit-scrollbar {
-        width: 6px;
+        width: 5px;
     }
 
     .message-container::-webkit-scrollbar-thumb {
@@ -248,12 +244,12 @@
         border-radius: 3px;
     }
 
-    :global(.chat-header) {
+    .chat-header {
         font-weight: bold;
         margin-bottom: 0.25rem;
     }
 
-    :global(.chat-footer) {
+    .chat-footer {
         font-size: 0.75rem;
         margin-top: 0.25rem;
     }
@@ -345,5 +341,19 @@
         padding-left: 1rem;
         border-left: 4px solid #d1d5db;
         color: #6b7280;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        :global(.chat-bubble) {
+            max-width: 85% !important;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .message-container {
+            padding-left: 15%;
+            padding-right: 15%;
+        }
     }
 </style>

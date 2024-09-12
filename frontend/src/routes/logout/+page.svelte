@@ -8,13 +8,14 @@
     const logout = async () => {
         try {
             const response = await apiFetch('sessions', {
+                fetch,
                 method: 'DELETE',
                 credentials: 'include' // 带上 cookie 进行跨域
             });
 
             if (response.success) {
                 setUser(null);
-                goto('/');
+                setTimeout(() => goto('/'), 1000); // 1 秒后跳转到首页
             } else {
                 console.error('Logout failed:', response.message);
             }
@@ -28,3 +29,34 @@
         logout();
     });
 </script>
+
+<svelte:head>
+    <title>Logout</title>
+    <meta name="description" content="WiseU Logout"/>
+</svelte:head>
+
+<!-- 可选的登出提示页面 -->
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-50">
+    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
+        <div class="navbar-start"></div>
+        <div class="navbar-center">
+            <a href="/" class="btn btn-ghost normal-case text-xl">WiseU</a>
+        </div>
+        <div class="navbar-end"></div>
+    </div>
+    <div class="text-center">
+        <h1 class="text-3xl font-bold text-indigo-500">Logging out...</h1>
+        <p class="text-gray-500">Please wait, you will be redirected shortly.</p>
+    </div>
+</div>
+
+<style>
+    /* 背景毛玻璃效果 */
+    .backdrop-blur-md {
+        backdrop-filter: blur(10px);
+    }
+
+    .min-h-screen {
+        min-height: 100vh;
+    }
+</style>
