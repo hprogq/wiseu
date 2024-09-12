@@ -53,7 +53,7 @@
         <!-- 如果未登录，显示按钮 -->
         <div class="relative z-10 mt-8 enter-animation">
             <button on:click={navigateToLogin} class="btn-custom">
-                Go to Index
+                Try Now
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                      class="ml-2 w-6 h-6 inline-block">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
