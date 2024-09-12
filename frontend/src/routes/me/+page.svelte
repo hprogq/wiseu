@@ -2,6 +2,7 @@
     import {apiFetch} from '$lib/api';
     import {goto} from '$app/navigation';
     import {goBack} from "$lib/common";
+    import {ChevronLeft, LogOut, PersonStanding, User} from "lucide-svelte";
 
     interface User {
         id: string;
@@ -47,29 +48,19 @@
 
 <div class="flex flex-col h-screen">
     <!-- 顶部菜单栏 -->
-    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
+    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b border-gray-200 max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
         <div class="navbar-start">
             <button class="btn btn-ghost" on:click={goBack}>
-                <!-- 返回图标 -->
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                     class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M15 19l-7-7 7-7"/>
-                </svg>
+                <ChevronLeft/>
             </button>
         </div>
         <div class="navbar-center">
-            <a href="/" class="btn btn-ghost normal-case text-xl">WiseU</a>
+            <a href="/" class="btn btn-ghost normal-case text-xl">Me</a>
         </div>
         <div class="navbar-end">
             <button class="btn btn-error" on:click={logout}>
                 <span class="text-white">Logout</span>
-                <!-- 退出图标 -->
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white"
-                     class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-10V7"/>
-                </svg>
+                <LogOut color="white"/>
             </button>
         </div>
     </div>
@@ -79,12 +70,7 @@
             <div class="p-8 w-full max-w-sm transform transition-transform duration-300 ease-in-out hover:scale-105">
                 <div class="flex items-center justify-center mb-6">
                     <div class="bg-indigo-500 p-4 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5.121 5.121C7.707 2.536 12.293 2.536 14.879 5.121a7 7 0 010 9.758M15 10a3 3 0 11-6 0 3 3 0 016 0zM3 21a8.001 8.001 0 0116 0"/>
-                        </svg>
+                        <User size={48} color="white"/>
                     </div>
                 </div>
                 <h1 class="text-2xl font-bold text-center text-indigo-700 mb-2">Welcome, {data.username}</h1>
@@ -93,6 +79,10 @@
                     <p><strong>Username:</strong> {data.username}</p>
                     <p><strong>Email:</strong> {data.email}</p>
                 </div>
+                <button class="btn btn-info" on:click={() => goto('/me/identities')}>
+                    <span class="text-white">My Identities</span>
+                    <PersonStanding color="white"/>
+                </button>
             </div>
         </div>
     {:else if error}
@@ -153,7 +143,6 @@
 
     .navbar {
         backdrop-filter: blur(10px);
-        padding: 0.5rem 1rem;
         display: flex;
         justify-content: space-between;
     }

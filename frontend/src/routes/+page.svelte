@@ -4,6 +4,7 @@
     import {userStore} from '$lib/stores/auth';
     import {get} from 'svelte/store';
     import {setUser} from "$lib/stores/auth";
+    import {ChevronRight} from "lucide-svelte";
 
     let loading = false;
 
@@ -34,7 +35,7 @@
     <!-- 文字内容 -->
     <div class="relative z-10 text-center transform transition-transform duration-300 ease-in-out">
         <h1 class="text-5xl font-extrabold text-indigo-500 mb-4 animate-bounce-once">
-            Hello
+            Hello 👋
         </h1>
         <h2 class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 animate-pulse">
             WiseU!
@@ -54,10 +55,7 @@
         <div class="relative z-10 mt-8 enter-animation">
             <button on:click={navigateToLogin} class="btn-custom">
                 Go to Index
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                     class="ml-2 w-6 h-6 inline-block">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
+                <ChevronRight/>
             </button>
         </div>
     {/if}
@@ -101,7 +99,7 @@
             transform: translateY(0);
         }
         50% {
-            transform: translateY(-15px);
+            transform: translateY(-5px);
         }
     }
 

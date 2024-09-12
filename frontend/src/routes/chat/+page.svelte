@@ -8,6 +8,7 @@
     import {goto, pushState} from "$app/navigation";
     import {marked} from 'marked';
     import {chatDefaultMessage} from "$lib/common";
+    import {Info, Plus, User} from "lucide-svelte";
 
     export let data;
 
@@ -21,6 +22,7 @@
         pushState(`/chat`, {});
         chatStore.setConversationId(null);
         chatStore.clearMessages();
+        data.conversationId = null;
 
         chatStore.addMessage(chatDefaultMessage); // 添加预置消息
     }
@@ -139,15 +141,11 @@
 
 <div class="flex flex-col h-screen">
     <!-- 顶部菜单栏 -->
-    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
+    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b border-gray-200 max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
         <div class="navbar-start">
             <button class="btn btn-ghost" on:click={() => goto('/me')}>
                 <!-- 用户图标 -->
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                     class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M5.121 17.804A10.97 10.97 0 0012 19c2.728 0 5.214-.984 7.121-2.804M15 12a3 3 0 11-6 0 3 3 0 016 0zM12 5a9 9 0 100 18 9 9 0 000-18z"/>
-                </svg>
+                <User size={24}/>
             </button>
         </div>
         <div class="navbar-center">
@@ -157,10 +155,7 @@
             <button class="btn" on:click={startNewChat}>
                 New Chat
                 <!-- 加号图标 -->
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                     class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
+                <Plus/>
             </button>
         </div>
     </div>
@@ -171,17 +166,7 @@
             {#each $messages as message (message.id)}
                 {#if message.sender === 'notice'}
                     <div transition:fly={{ y: -100, duration: 300 }} class="alert shadow-lg">
-                        <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                class="stroke-info h-6 w-6 shrink-0">
-                            <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                        <Info/>
                         {message.content}
                     </div>
                 {:else}

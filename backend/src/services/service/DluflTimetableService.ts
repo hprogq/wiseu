@@ -60,7 +60,7 @@ class DluflTimetableService extends ServiceProvider {
       semester: z.string(),
       learnWeek: z.string(),
     }),
-    description: `This function returns the timetable for a given schoolYear, semester, and learnWeek. The schoolYear should be a string like \"2024-2025\", semester should be a number string like "1", and learnWeek should be a number string from range "1" to "${this.weekCount}".`,
+    description: `This function returns the timetable (of a specific week) for a given schoolYear, semester, and learnWeek. The schoolYear should be a string like \"2024-2025\", semester should be a number string like "1", and learnWeek should be a number string from range "1" to "${this.weekCount}".`,
     func: async ({ schoolYear, semester, learnWeek }) => {
       if (!this.token) {
         return { success: false, message: "Not authenticated" };
@@ -295,7 +295,7 @@ class DluflTimetableService extends ServiceProvider {
     const todayWeekDay = new Date().getDay();
     const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
 
-    let promptString = `用户已经接入课程表服务。今天是${todayDate}星期${weekDays[todayWeekDay]},系统每60分钟获取到的信息为：【现在是${schoolYear}学年、第${semester}学期，当前周为第${learnWeek}周，今天应该${todayInfo?.isHoliday ? "是" : "不是"}假期】，该信息可能过时，你也可以根据每学期的开始日期和今天的日期、星期自行推断。`;
+    let promptString = `用户已经接入课程表服务。今天是${todayDate}星期${weekDays[todayWeekDay]}，系统每60分钟获取到的信息为：【现在是${schoolYear}学年、第${semester}学期，当前周为第${learnWeek}周，今天应该${todayInfo?.isHoliday === "n" ? "不是" : "是"}假期】，该信息可能过时，你也可以根据每学期的开始日期和今天的日期、星期自行推断。`;
 
     promptString += "\n\n以下是各学年各学期的开始日期：\n";
     for (const [year, dates] of Object.entries(semesterDates) as [

@@ -4,7 +4,8 @@
     import {writable} from 'svelte/store';
     import {goto} from '$app/navigation'; // 导入 goto 方法
     import {fly} from 'svelte/transition';
-    import {setUser} from "$lib/stores/auth"; // 导入 fly 动画
+    import {setUser} from "$lib/stores/auth";
+    import {ChevronLeft, Info, Check} from "lucide-svelte"; // 导入 fly 动画
 
     // 存储登录用户信息
     export const loggedInUser = writable<{ id: string, username: string, email: string } | null>(null);
@@ -72,11 +73,7 @@
         <div class="navbar-start">
             <button class="btn btn-ghost" on:click={goBack}>
                 <!-- 返回图标 -->
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                     class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M15 19l-7-7 7-7"/>
-                </svg>
+                <ChevronLeft/>
             </button>
         </div>
         <div class="navbar-center">
@@ -90,7 +87,8 @@
 
     <!-- 注册框 -->
     <div class="relative p-8 w-full max-w-md z-10 transform transition-transform duration-300 ease-in-out">
-        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-600">Register to WiseU</h1>
+        <span class="text-5xl">🙌</span>
+        <h1 class="mt-5 text-3xl font-bold mb-6 text-indigo-600">Hey There</h1>
 
         <form on:submit|preventDefault={handleRegister} class="space-y-4">
             <div class="form-control">
@@ -162,17 +160,7 @@
              class="fixed top-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 z-50">
             {#if errorMessage}
                 <div role="alert" class="alert shadow-lg flex justify-between items-center">
-                    <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            class="stroke-info h-6 w-6 shrink-0">
-                        <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
+                    <Info/>
                     <span>{errorMessage}</span>
                     <button class="btn btn-sm btn-ghost" on:click={closeNotification}>✕</button>
                 </div>
@@ -180,17 +168,7 @@
 
             {#if successMessage}
                 <div role="alert" class="alert shadow-lg flex justify-between items-center">
-                    <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-6 w-6 shrink-0 stroke-current"
-                            fill="none"
-                            viewBox="0 0 24 24">
-                        <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+                    <Check/>
                     <span>{successMessage}</span>
                     <button class="btn btn-sm btn-ghost" on:click={closeNotification}>✕</button>
                 </div>
