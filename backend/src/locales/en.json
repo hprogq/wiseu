@@ -20,5 +20,29 @@
     "logout_success": "Logout Successfully",
     "unauthorized": "Unauthorized",
     "current_user": "Current User Info Listed"
+  },
+  "chat": {
+    "default_prompt": ""
+  },
+  "services": {
+    "DluflTimetableService": {
+      "weekdays": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+      },
+      "timeSlots": {
+        "1": "Class 1-2 (08:30~09:50)",
+        "3": "Class 3-4 (10:10~11:30)",
+        "5": "Class 5-6 (13:30~14:50)",
+        "7": "Class 7-8 (15:10~16:30)",
+        "9": "Class 9-10 (18:00~19:20)",
+        "11": "Class 11-12 (19:40~21:00)"
+      }
+    }
   }
 }

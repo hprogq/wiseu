@@ -9,7 +9,7 @@
     let loading = false;
 
     const navigateToLogin = () => {
-        goto('/login'); // 跳转到 /login 页面
+        goto('/signin'); // 跳转到 /signin 页面
     };
 
     onMount(() => {

@@ -13,7 +13,7 @@
     let successMessage: string | null = null;
     let showNotification = false;
 
-    const handleLogin = async () => {
+    const handleSignIn = async () => {
         errorMessage = null;
         successMessage = null;
         loading = true;
@@ -28,7 +28,7 @@
 
             if (response.success) {
                 setUser(response.data.user);
-                successMessage = 'Login successful!';
+                successMessage = 'Sign in successful!';
                 showNotification = true;
 
                 setTimeout(() => {
@@ -41,7 +41,7 @@
                 setTimeout(() => (showNotification = false), 3000); // 3 秒后自动消失
             }
         } catch (error) {
-            console.error('Login error', error);
+            console.error('Sign in error', error);
             errorMessage = 'An error occurred. Please try again later.';
             showNotification = true;
             setTimeout(() => (showNotification = false), 3000); // 3 秒后自动消失
@@ -56,13 +56,13 @@
 </script>
 
 <svelte:head>
-    <title>Login</title>
-    <meta name="description" content="WiseU Login"/>
+    <title>Sign In</title>
+    <meta name="description" content="WiseU Sign In"/>
 </svelte:head>
 
 <!-- 浅色毛玻璃背景 -->
 <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-100 via-white to-blue-50">
-    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
+    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b border-gray-200 max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
         <div class="navbar-start">
             <button class="btn btn-ghost" on:click={goBack}>
                 <!-- 返回图标 -->
@@ -70,7 +70,7 @@
             </button>
         </div>
         <div class="navbar-center">
-            <a href="/" class="btn btn-ghost normal-case text-xl">Login Page</a>
+            <a href="/" class="btn btn-ghost normal-case text-xl">Sign In</a>
         </div>
         <div class="navbar-end"></div>
     </div>
@@ -83,16 +83,16 @@
         <span class="text-5xl">👋</span>
         <h1 class="mt-5 text-3xl font-bold mb-6 text-indigo-600">Welcome Back</h1>
 
-        <form on:submit|preventDefault={handleLogin} class="space-y-4">
+        <form on:submit|preventDefault={handleSignIn} class="space-y-4">
             <div class="form-control">
                 <label for="username" class="label">
-                    <span class="label-text">Username / Email</span>
+                    <span class="label-text">Username or Email</span>
                 </label>
                 <input
                         id="username"
                         bind:value={username}
                         type="text"
-                        placeholder="Username / Email"
+                        placeholder="Username or Email"
                         class="input input-bordered w-full transition-all duration-200 ease-in-out hover:shadow-md focus:shadow-lg"
                         required
                 />
@@ -119,18 +119,18 @@
             >
                 {#if loading}
                     <span class="loading loading-spinner loading-sm"></span>
-                    Logging in...
+                    Signing In...
                 {:else}
-                    Login
+                    Sign In
                 {/if}
             </button>
         </form>
 
         <div class="mt-6">
             <div class="text-center">
-                <a href="/register"
+                <a href="/signup"
                    class="inline-block text-sm text-gray-500 underline italic hover:text-gray-700 transition duration-300 ease-in-out">
-                    Don't have an account? Register here
+                    Don't have an account? <b>Sign up</b> here.
                 </a>
             </div>
         </div>
@@ -160,7 +160,6 @@
 </div>
 
 <style>
-    /* 背景毛玻璃效果 */
     .backdrop-blur-md {
         backdrop-filter: blur(10px);
     }

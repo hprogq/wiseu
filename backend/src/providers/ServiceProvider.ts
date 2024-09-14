@@ -6,41 +6,47 @@ import { DynamicTool, DynamicStructuredTool } from "@langchain/core/tools";
 export type ServiceConstructor = new () => ServiceProvider;
 
 export abstract class ServiceProvider {
-    abstract name: string; // 服务名称
-    abstract type: string; // 服务类型，例如 'dlufl_library'
-    abstract description: string; // 服务描述
-    abstract icon: string; // 服务图标
-    abstract category: string; // 服务分类，例如 'library'
-    abstract identityType: string[]; // 依赖的身份类型列表
-    abstract params: Parameter[]; // 服务所需的参数
-    abstract interval: number; // 定时任务的执行间隔(s)，设置为0表示不执行定时任务
-    abstract tools: (DynamicTool | DynamicStructuredTool<any>)[]; // 服务所需的工具列表
+  abstract name: string; // Service name, e.g. 'DLUFL Library'
+  abstract type: string; // Service type, e.g. 'dlufl_library'
+  abstract description: string; // Service description
+  abstract icon: string; // Service icon, e.g. 'ic-space.png'
+  abstract category: string; // Service category, e.g. 'Library', 'Course'
+  abstract identityType: string[]; // Service identity type, e.g. 'dlufl_undergrad'
+  abstract params: Parameter[]; // Service parameters
+  abstract interval: number; // Service update interval in milliseconds
+  abstract tools: (DynamicTool | DynamicStructuredTool<any>)[]; // Service tools
 
-    protected identityId: string = ""; // 服务关联的身份
-    protected serviceId: string = "";
-    protected configuration: Configuration = {}; // 服务的配置
+  protected identityId: string = ""; // Service identity id
+  protected serviceId: string = ""; // Service id
+  protected configuration: Configuration = {}; // Service configuration
 
-    // 构造函数，初始化配置并进行验证
-    protected constructor() {}
+  // Constructor
+  protected constructor() {}
 
-    abstract prompt(question: string): Promise<string>;
+  // Abstract methods, to be implemented by subclasses
+  abstract prompt(question: string): Promise<string>;
 
-    // 抽象方法，更新数据（定时调用）
-    abstract update(): Promise<void>;
+  abstract update(): Promise<void>;
 
-    // 检查服务配置的有效性
-    public async init(identityId: string, config: Configuration, serviceId: string = ''): Promise<boolean> {
-        if (!config) {
-            return false; // 如果参数为空
-        }
-        for (const param of this.params) {
-            if (param.required && !config[param.fieldName]) {
-                return false; // 如果必填参数缺失，则返回false
-            }
-        }
-        this.configuration = config;
-        this.identityId = identityId;
-        this.serviceId = serviceId;
-        return true; // 所有必填参数都存在时返回true
+  abstract destroy(): Promise<void>;
+
+  // Validate the configuration
+  public async init(
+    identityId: string,
+    config: Configuration,
+    serviceId: string = "",
+  ): Promise<boolean> {
+    if (!config) {
+      return false; // 如果参数为空
     }
+    for (const param of this.params) {
+      if (param.required && !config[param.fieldName]) {
+        return false; // 如果必填参数缺失，则返回false
+      }
+    }
+    this.configuration = config;
+    this.identityId = identityId;
+    this.serviceId = serviceId;
+    return true; // 所有必填参数都存在时返回true
+  }
 }

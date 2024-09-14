@@ -3,6 +3,7 @@ import { apiFetch } from '$lib/api';
 import { chatStore } from '$lib/stores/chat';
 import { marked } from 'marked';
 import { v4 as uuidv4 } from 'uuid';
+import { chatDefaultMessage } from '$lib/common';
 
 export const load: PageLoad = async ({ params, fetch }) => {
 	const conversationId = params.conversationId;
@@ -20,16 +21,9 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		});
 
 		if (response.success) {
-			// 预置消息，作为第一条显示
-			const defaultMessage = {
-				id: uuidv4(),
-				content: await marked('欢迎来到 WiseU Chat! 在这里开始你的对话。'),
-				sender: 'assistant' as const
-			};
-
 			// 解析来自 API 的消息并合并预置消息
 			const messages = [
-				defaultMessage,
+				chatDefaultMessage,
 				...(await Promise.all(
 					response.data.messages.map(async (msg) => ({
 						id: uuidv4(),

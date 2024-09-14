@@ -12,7 +12,7 @@
 
     export let data;
 
-    $: conversationId = data.conversationId;
+    $: conversationId = data.conversationId || "";
 
     let newMessage = '';
     let isLoading = false;
@@ -32,7 +32,7 @@
     }
 
     // 从 chatStore 中派生消息
-    const messages = derived(chatStore, $chatStore => $chatStore.messages);
+    const messages = derived(chatStore, () => $chatStore.messages);
 
     async function sendMessage() {
         if (!newMessage.trim()) return;
@@ -40,6 +40,7 @@
         isLoading = true;
         const userMessage = {id: generateUniqueMessageId(), content: await marked(newMessage), sender: 'user' as const};
         chatStore.addMessage(userMessage);
+        isUserScrolling = false; // 用户发送消息时，滚动到底部
         scrollToBottom(); // 发送消息时滚动到最底部
 
         try {

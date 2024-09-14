@@ -24,7 +24,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				return new Response(null, {
 					status: 303,
 					headers: {
-						Location: '/login'
+						Location: '/signin'
 					}
 				});
 			}
@@ -33,7 +33,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			return new Response(null, {
 				status: 303,
 				headers: {
-					Location: '/login'
+					Location: '/signin'
 				}
 			});
 		}

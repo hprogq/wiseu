@@ -2,7 +2,7 @@
     import {apiFetch} from '$lib/api';
     import {goto} from '$app/navigation';
     import {goBack} from "$lib/common";
-    import {ChevronLeft, LogOut, PersonStanding, User} from "lucide-svelte";
+    import {ChevronLeft, Database, LogOut, PersonStanding, User} from "lucide-svelte";
 
     interface User {
         id: string;
@@ -82,6 +82,11 @@
                 <button class="btn btn-info" on:click={() => goto('/me/identities')}>
                     <span class="text-white">My Identities</span>
                     <PersonStanding color="white"/>
+                </button>
+
+                <button class="btn btn-warning" on:click={() => goto('/me/services')}>
+                    <span class="text-white">My Services</span>
+                    <Database color="white"/>
                 </button>
             </div>
         </div>

@@ -7,7 +7,6 @@
     import {setUser} from "$lib/stores/auth";
     import {ChevronLeft, Info, Check} from "lucide-svelte"; // 导入 fly 动画
 
-    // 存储登录用户信息
     export const loggedInUser = writable<{ id: string, username: string, email: string } | null>(null);
 
     let username = '';
@@ -18,15 +17,13 @@
     let successMessage: string | null = null;
     let showNotification = false;
 
-    const handleRegister = async () => {
-        // 清除旧错误和成功消息
+    const handleSignUp = async () => {
         errorMessage = null;
         successMessage = null;
         loading = true;
         showNotification = false;
 
         try {
-            // 调用注册 API
             const response = await apiFetch<{ user: { id: string, username: string, email: string } }>('users', {
                 method: 'POST',
                 body: JSON.stringify({username, email, password}),
@@ -34,10 +31,9 @@
 
             if (response.success) {
                 setUser(response.data.user);
-                successMessage = 'Registration successful!';
+                successMessage = 'Sign up successful!';
                 showNotification = true;
 
-                // 设置定时器，3 秒后自动消失并跳转到 /me 页面
                 setTimeout(() => {
                     showNotification = false;
                     goto('/chat');
@@ -48,7 +44,7 @@
                 setTimeout(() => (showNotification = false), 3000); // 3 秒后自动消失
             }
         } catch (error) {
-            console.error('Registration error', error);
+            console.error('Sign up error', error);
             errorMessage = 'An error occurred. Please try again later.';
             showNotification = true;
             setTimeout(() => (showNotification = false), 3000); // 3 秒后自动消失
@@ -63,21 +59,20 @@
 </script>
 
 <svelte:head>
-    <title>Register</title>
-    <meta name="description" content="WiseU Register"/>
+    <title>Sign Up</title>
+    <meta name="description" content="WiseU Sign Up"/>
 </svelte:head>
 
 <!-- 浅色毛玻璃背景 -->
 <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-100 via-white to-blue-50">
-    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b-2 border-transparent max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
+    <div class="navbar fixed top-0 z-50 w-full transition-all duration-500 ease-in-out border-b border-gray-200 max-h-[4.125rem] bg-base-100/50 backdrop-blur-md flex-shrink-0">
         <div class="navbar-start">
             <button class="btn btn-ghost" on:click={goBack}>
-                <!-- 返回图标 -->
                 <ChevronLeft/>
             </button>
         </div>
         <div class="navbar-center">
-            <a href="/" class="btn btn-ghost normal-case text-xl">Register Page</a>
+            <a href="/" class="btn btn-ghost normal-case text-xl">Sign Up</a>
         </div>
         <div class="navbar-end"></div>
     </div>
@@ -90,7 +85,7 @@
         <span class="text-5xl">🙌</span>
         <h1 class="mt-5 text-3xl font-bold mb-6 text-indigo-600">Hey There</h1>
 
-        <form on:submit|preventDefault={handleRegister} class="space-y-4">
+        <form on:submit|preventDefault={handleSignUp} class="space-y-4">
             <div class="form-control">
                 <label for="username" class="label">
                     <span class="label-text">Username</span>
@@ -99,6 +94,7 @@
                         id="username"
                         bind:value={username}
                         type="text"
+                        placeholder="Username"
                         class="input input-bordered w-full transition-all duration-200 ease-in-out hover:shadow-md focus:shadow-lg"
                         required
                 />
@@ -112,6 +108,7 @@
                         id="email"
                         bind:value={email}
                         type="email"
+                        placeholder="Email"
                         class="input input-bordered w-full transition-all duration-200 ease-in-out hover:shadow-md focus:shadow-lg"
                         required
                 />
@@ -125,6 +122,7 @@
                         id="password"
                         bind:value={password}
                         type="password"
+                        placeholder="Password"
                         class="input input-bordered w-full transition-all duration-200 ease-in-out hover:shadow-md focus:shadow-lg"
                         required
                 />
@@ -137,18 +135,18 @@
             >
                 {#if loading}
                     <span class="loading loading-spinner loading-sm"></span>
-                    Registering...
+                    Signing Up...
                 {:else}
-                    Register
+                    Sign Up
                 {/if}
             </button>
         </form>
 
         <div class="mt-6">
             <div class="text-center">
-                <a href="/login"
+                <a href="/signin"
                    class="inline-block text-sm text-gray-500 underline italic hover:text-gray-700 transition duration-300 ease-in-out">
-                    Already have an account? Log in here
+                    Already have an account? <b>Sign in</b> here.
                 </a>
             </div>
         </div>
@@ -178,7 +176,6 @@
 </div>
 
 <style>
-    /* 背景毛玻璃效果 */
     .backdrop-blur-md {
         backdrop-filter: blur(10px);
     }

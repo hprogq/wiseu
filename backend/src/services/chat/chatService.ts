@@ -58,16 +58,24 @@ export class ChatService {
     previousMessages: InstanceType<typeof MessageModel>[],
     onTokenReceived: (token: string, role?: string) => void,
     signal: AbortSignal,
-    conversation: any, // Pass conversation to chat method
+    conversation: any,
   ): Promise<string> {
     const currentDate = new Date();
     const date = currentDate.toLocaleDateString();
-    const daysOfWeek = ["日", "一", "二", "三", "四", "五", "六"];
+    const daysOfWeek = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
     const dayOfWeek = daysOfWeek[currentDate.getDay()];
     const time = currentDate.toLocaleTimeString();
 
     const systemMessage = new SystemMessage({
-      content: `你是WiseU，一个专注于大学生的生活智能助理。今天是${date}（${dayOfWeek}），现在是${time}。接下来用户将与你进行对话。`,
+      content: `You are WiseU, an intelligent assistant focused on university students' lives. Today is ${date} (${dayOfWeek}), and the current time is ${time}. The user will now begin a conversation with you. Regardless of the language contained in the prompt context you receive, please respond to the user in the language of their most recent message.`,
     });
 
     const servicePromptMessages: BaseMessage[] = [];
@@ -132,7 +140,7 @@ export class ChatService {
           const toolArgs = toolCall.args;
 
           // Send the "正在调用XXX" message (start notice)
-          onTokenReceived(`正在调用 ${toolName} 工具...`, "notice");
+          onTokenReceived(`Calling ${toolName}...`, "notice");
 
           const selectedTool = serviceTools.find(
             (tool) => tool.name === toolName,
@@ -166,11 +174,11 @@ export class ChatService {
                 }
               }
             } else {
-              onTokenReceived(`调用 ${toolName} 工具失败`, "error");
+              onTokenReceived(`Call ${toolName} Failed`, "error");
             }
 
             // Send the "工具调用完成" message (end notice)
-            onTokenReceived(`${toolName} 工具调用完成`, "notice");
+            onTokenReceived(`${toolName} Success`, "notice");
           }
         }
       } else {

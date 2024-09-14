@@ -11,7 +11,8 @@ import service from "../models/Service";
 import {
   addServiceTask,
   removeServiceTask,
-} from "../services/service/serviceScheduler"; // 引入定时任务取消方法
+} from "../services/service/serviceScheduler";
+import serviceRegistry from "../services/service/serviceRegistry"; // 引入定时任务取消方法
 
 // 获取所有可用服务
 export const getAllServices = (req: Request, res: Response) => {
@@ -49,6 +50,34 @@ export const getAllServices = (req: Request, res: Response) => {
   );
 };
 
+export const getServiceParams = (req: Request, res: Response) => {
+  restful(
+    req,
+    res,
+    {
+      get: async (req: Request, res: Response) => {
+        try {
+          const { serviceType } = req.params;
+
+          const ServiceClass = ServiceRegistry.getService(serviceType);
+          const serviceInstance = new ServiceClass();
+
+          res.json(
+            createResponse(
+              true,
+              "Service parameters fetched successfully",
+              serviceInstance.params,
+            ),
+          );
+        } catch (error: any) {
+          res.status(500).json(createResponse(false, error.message));
+        }
+      },
+    },
+    true,
+  );
+};
+
 // 服务管理
 export const userServicesController = (req: Request, res: Response) => {
   restful(
@@ -58,13 +87,29 @@ export const userServicesController = (req: Request, res: Response) => {
       get: async (req: Request, res: Response) => {
         try {
           const userId = req.session.user?.id;
-          const services = await Service.find({ user: userId });
+          const services = await Service.find({ user: userId })
+            .select("_id type identityId primary status lastUpdated")
+            .lean();
+
+          // 为每个身份增加类型的详细信息（名称、描述、icon等）
+          const enrichedServices = services.map((service) => {
+            const ServiceClass = serviceRegistry.getService(service.type);
+            const ServiceInstance = new ServiceClass();
+            return {
+              ...service,
+              typeInfo: {
+                name: ServiceInstance.name,
+                description: ServiceInstance.description,
+                icon: ServiceInstance.icon,
+              },
+            };
+          });
 
           res.json(
             createResponse(
               true,
               "User services fetched successfully",
-              services,
+              enrichedServices,
             ),
           );
         } catch (error: any) {
@@ -159,127 +204,6 @@ export const userServicesController = (req: Request, res: Response) => {
             createResponse(true, "Service added successfully", {
               id: newService.id,
             }),
-          );
-        } catch (error: any) {
-          res.status(500).json(createResponse(false, error.message));
-        }
-      },
-    },
-    true,
-  );
-};
-
-// 删除用户的服务
-export const deleteService = (req: Request, res: Response) => {
-  restful(
-    req,
-    res,
-    {
-      delete: async (req: Request, res: Response) => {
-        try {
-          const { serviceId } = req.params;
-          const userId = req.session.user?.id;
-
-          const service = await Service.findOneAndDelete({
-            _id: serviceId,
-            user: userId,
-          });
-          if (!service) {
-            return res
-              .status(404)
-              .json(createResponse(false, "Service not found"));
-          }
-
-          // 取消该服务的定时任务
-          await removeServiceTask(serviceId);
-
-          res.json(createResponse(true, "Service deleted successfully"));
-        } catch (error: any) {
-          res.status(500).json(createResponse(false, error.message));
-        }
-      },
-    },
-    true,
-  );
-};
-
-// 更新用户服务配置
-export const updateServiceConfiguration = (req: Request, res: Response) => {
-  restful(
-    req,
-    res,
-    {
-      put: async (req: Request, res: Response) => {
-        try {
-          const { serviceId } = req.params;
-          const { config, identityId, configuration, status } = req.body;
-          const userId = req.session.user?.id;
-
-          const service = await Service.findOne({
-            _id: serviceId,
-            user: userId,
-          });
-          if (!service) {
-            return res
-              .status(404)
-              .json(createResponse(false, "Service not found"));
-          }
-
-          const ServiceClass = ServiceRegistry.getService(service.type);
-          const serviceInstance = new ServiceClass();
-
-          // 验证身份类型
-          if (!mongoose.Types.ObjectId.isValid(identityId)) {
-            return res
-              .status(400)
-              .json(createResponse(false, "Invalid identity ID"));
-          }
-          const identity = await Identity.findOne({
-            _id: new mongoose.Types.ObjectId(identityId),
-            user: new mongoose.Types.ObjectId(userId),
-          });
-          if (!identity) {
-            return res
-              .status(404)
-              .json(createResponse(false, "Identity not found"));
-          }
-          if (!serviceInstance.identityType.includes(identity.type)) {
-            return res
-              .status(400)
-              .json(
-                createResponse(false, "Invalid service type for this service"),
-              );
-          }
-
-          // 检查服务是否已存在
-          const existingService = await Service.findOne({
-            user: userId,
-            type: service.type,
-            identityId: new mongoose.Types.ObjectId(identityId),
-            _id: { $ne: serviceId },
-          });
-          if (existingService) {
-            return res
-              .status(400)
-              .json(createResponse(false, "Service already exists"));
-          }
-
-          const isValid = await serviceInstance.init(identityId, configuration);
-          if (!isValid) {
-            return res
-              .status(400)
-              .json(createResponse(false, "Invalid service configuration"));
-          }
-
-          service.configuration = config;
-          await service.save();
-
-          res.json(
-            createResponse(
-              true,
-              "Service configuration updated successfully",
-              service,
-            ),
           );
         } catch (error: any) {
           res.status(500).json(createResponse(false, error.message));
@@ -465,6 +389,125 @@ export const getServiceDetails = (req: Request, res: Response) => {
           res.status(500).json(createResponse(false, error.message));
         }
       },
+
+      put: async (req: Request, res: Response) => {
+        try {
+          const { serviceId } = req.params;
+          const { identityId, configuration } = req.body;
+          const userId = req.session.user?.id;
+
+          if (
+            !identityId ||
+            !configuration ||
+            !isConfiguration(configuration)
+          ) {
+            return res
+              .status(400)
+              .json(createResponse(false, "Invalid request body"));
+          }
+
+          const service = await Service.findOne({
+            _id: serviceId,
+            user: userId,
+          });
+          if (!service) {
+            return res
+              .status(404)
+              .json(createResponse(false, "Service not found"));
+          }
+
+          const ServiceClass = ServiceRegistry.getService(service.type);
+          const serviceInstance = new ServiceClass();
+
+          // 验证身份类型
+          if (!mongoose.Types.ObjectId.isValid(identityId)) {
+            return res
+              .status(400)
+              .json(createResponse(false, "Invalid identity ID"));
+          }
+          const identity = await Identity.findOne({
+            _id: new mongoose.Types.ObjectId(identityId),
+            user: new mongoose.Types.ObjectId(userId),
+          });
+          if (!identity) {
+            return res
+              .status(404)
+              .json(createResponse(false, "Identity not found"));
+          }
+          if (!serviceInstance.identityType.includes(identity.type)) {
+            return res
+              .status(400)
+              .json(
+                createResponse(false, "Invalid service type for this service"),
+              );
+          }
+
+          // 检查服务是否已存在
+          const existingService = await Service.findOne({
+            user: userId,
+            type: service.type,
+            identityId: new mongoose.Types.ObjectId(identityId),
+            _id: { $ne: serviceId },
+          });
+          if (existingService) {
+            return res
+              .status(400)
+              .json(createResponse(false, "Service already exists"));
+          }
+
+          const isValid = await serviceInstance.init(identityId, configuration);
+          if (!isValid) {
+            return res
+              .status(400)
+              .json(createResponse(false, "Invalid service configuration"));
+          }
+
+          await serviceInstance.destroy();
+
+          service.runtime = {};
+          service.configuration = configuration;
+          await service.save();
+
+          res.json(
+            createResponse(
+              true,
+              "Service configuration updated successfully",
+              service,
+            ),
+          );
+        } catch (error: any) {
+          res.status(500).json(createResponse(false, error.message));
+        }
+      },
+      delete: async (req: Request, res: Response) => {
+        try {
+          const { serviceId } = req.params;
+          const userId = req.session.user?.id;
+
+          const service = await Service.findOneAndDelete({
+            _id: serviceId,
+            user: userId,
+          });
+          if (!service) {
+            return res
+              .status(404)
+              .json(createResponse(false, "Service not found"));
+          }
+
+          const ServiceClass = ServiceRegistry.getService(service.type);
+          const serviceInstance = new ServiceClass();
+
+          await serviceInstance.init(service.identityId, service.configuration);
+          await serviceInstance.destroy();
+
+          // 取消该服务的定时任务
+          await removeServiceTask(serviceId);
+
+          res.json(createResponse(true, "Service deleted successfully"));
+        } catch (error: any) {
+          res.status(500).json(createResponse(false, error.message));
+        }
+      },
     },
     true,
   );
@@ -533,6 +576,25 @@ export const refreshService = (req: Request, res: Response) => {
   );
 };
 
+export const clearRuntime = async (
+  serviceId: string,
+  userId: string,
+): Promise<{ success: boolean }> => {
+  const service = await Service.findOne({
+    _id: serviceId,
+    user: userId,
+  });
+  if (!service) {
+    return { success: false };
+  }
+
+  service.runtime = {};
+  service.lastUpdated = new Date();
+  await service.save();
+
+  return { success: true };
+};
+
 // 清除运行时数据
 export const clearServiceRuntimeData = async (req: Request, res: Response) => {
   restful(
@@ -544,19 +606,17 @@ export const clearServiceRuntimeData = async (req: Request, res: Response) => {
           const { serviceId } = req.params;
           const userId = req.session.user?.id;
 
-          const service = await Service.findOne({
-            _id: serviceId,
-            user: userId,
-          });
+          const service = await Service.findOne({ _id: serviceId });
           if (!service) {
+            return { success: false, message: "Service not found" };
+          }
+
+          const result = await clearRuntime(serviceId, userId);
+          if (!result.success) {
             return res
               .status(404)
               .json(createResponse(false, "Service not found"));
           }
-
-          service.runtime = {};
-          service.lastUpdated = new Date();
-          await service.save();
 
           // 获取服务的执行间隔
           const ServiceClass = ServiceRegistry.getService(service.type);

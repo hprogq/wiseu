@@ -9,12 +9,12 @@
             <ul class="flex space-x-4">
                 <li><a href="/" class="link link-hover">Home</a></li>
                 <li><a href="/about" class="link link-hover">About</a></li>
-                <li><a href="/login" class="link link-hover">Login</a></li>
+                <li><a href="/signin" class="link link-hover">Login</a></li>
             </ul>
         </div>
     </nav>
 </header>
 
 <style>
-	
+
 </style>

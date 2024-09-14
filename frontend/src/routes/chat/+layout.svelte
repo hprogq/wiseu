@@ -6,7 +6,7 @@
 
     onMount(() => {
         if (!get(userStore)) {
-            goto('/login'); // 未登录时重定向
+            goto('/signin'); // 未登录时重定向
         }
     });
 </script>
